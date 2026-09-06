@@ -4,6 +4,7 @@
   --surface-hover: #334155;
   --primary: #38bdf8;
   --primary-hover: #0ea5e9;
+  --success: #34d399;
   --danger: #f87171;
   --text: #f8fafc;
   --muted: #94a3b8;
@@ -23,7 +24,7 @@ body {
   margin: 0 auto;
 }
 
-/* Landing Page */
+/* Landing Section */
 .hero-container {
   min-height: 80vh;
   display: flex;
@@ -64,12 +65,18 @@ body {
   font-size: 0.85rem;
 }
 
+.hero-actions {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+}
+
 .btn-large {
-  padding: 0.85rem 2rem;
+  padding: 0.85rem 1.75rem;
   font-size: 1rem;
 }
 
-/* Auth & Modals */
+/* Auth Cards & Modals */
 .auth-overlay, .modal-overlay {
   display: flex;
   justify-content: center;
@@ -90,7 +97,7 @@ body {
   border-radius: 12px;
   padding: 2.5rem;
   width: 100%;
-  max-width: 380px;
+  max-width: 400px;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
   text-align: center;
 }
@@ -161,17 +168,28 @@ body {
   margin-bottom: 1rem;
 }
 
+.auth-switch {
+  margin-top: 1.5rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
 .link-btn {
   background: none;
   border: none;
   color: var(--primary);
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   cursor: pointer;
   padding: 0;
 }
 
-.link-btn:hover {
+.link-btn.highlight {
+  font-weight: 600;
   text-decoration: underline;
+}
+
+.link-btn:hover {
+  color: var(--primary-hover);
 }
 
 .credentials-box {
@@ -179,16 +197,19 @@ body {
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 0.75rem;
-  margin: 1.25rem 0;
+  margin: 1rem 0;
   text-align: left;
-}
-
-.credentials-box code {
-  color: var(--primary);
+  font-size: 0.85rem;
 }
 
 .auth-error {
   color: var(--danger);
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.auth-success {
+  color: var(--success);
   font-size: 0.85rem;
   margin-bottom: 1rem;
 }
@@ -203,6 +224,13 @@ header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.user-greeting {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.9rem;
 }
 
 .brand-logo {
@@ -221,7 +249,7 @@ header p {
   color: var(--muted);
 }
 
-/* Upload & Metrics Layout */
+/* Metrics & Charts */
 .metrics-header-bar {
   display: flex;
   justify-content: space-between;
