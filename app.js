@@ -17,7 +17,16 @@ document.addEventListener('DOMContentLoaded', () => {
     ? "http://127.0.0.1:8000"
     : "https://data-analyst-hub.onrender.com";
 
-  const BACKEND_URL = `${API_BASE}/api/analyze/`;
+  const BACKEND_URL = `${API_BASE}/api/analyze`;
+
+  // --- Security & Role-Level Security Context ---
+  let currentRole = "Chairman";
+  const userRoleSelect = document.getElementById('userRoleSelect');
+  if (userRoleSelect) {
+    userRoleSelect.addEventListener('change', (e) => {
+      currentRole = e.target.value;
+    });
+  }
 
   // View Containers
   const landingSection = document.getElementById('landingSection');
@@ -357,7 +366,53 @@ document.addEventListener('DOMContentLoaded', () => {
     if (mainDashboard) mainDashboard.classList.remove('hidden');
   }
 
-  // --- CSV Ingestion & Profiling ---
+  // --- Onboarding Handlers ---
+  const openOnboardBtn = document.getElementById('openOnboardBtn');
+  const onboardModal = document.getElementById('onboardModal');
+  const closeOnboardBtn = document.getElementById('closeOnboardBtn');
+  const submitOnboardBtn = document.getElementById('submitOnboardBtn');
+
+  if (openOnboardBtn && onboardModal) {
+    openOnboardBtn.addEventListener('click', () => onboardModal.classList.remove('hidden'));
+    closeOnboardBtn.addEventListener('click', () => onboardModal.classList.add('hidden'));
+
+    submitOnboardBtn.addEventListener('click', async () => {
+      const bizName = document.getElementById('onboardBizName').value.trim();
+      const bizEmail = document.getElementById('onboardBizEmail').value.trim();
+      const industry = document.getElementById('onboardIndustry').value;
+      const chairmanKey = document.getElementById('keyChairman').value;
+      const ctoKey = document.getElementById('keyCTO').value;
+      const retailKey = document.getElementById('keyRetail').value;
+
+      if (!bizName || !bizEmail) {
+        alert("Business Name and Email are required.");
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_BASE}/api/tenant/onboard`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            business_name: bizName,
+            admin_email: bizEmail,
+            industry: industry,
+            chairman_key: chairmanKey,
+            cto_key: ctoKey,
+            retail_officer_key: retailKey
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Onboarding failed.");
+        alert(`Success: ${data.message}`);
+        onboardModal.classList.add('hidden');
+      } catch (err) {
+        alert(err.message);
+      }
+    });
+  }
+
+  // --- CSV Ingestion & Profiling (with RLS Role Header) ---
   if (uploadBtn) {
     uploadBtn.addEventListener('click', async () => {
       const loader = document.getElementById('loading');
@@ -377,8 +432,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const res = await fetch(BACKEND_URL, {
           method: "POST",
           headers: {
-            "Accept": "application/json"
-            // Note: Do NOT set Content-Type here; browser must auto-set multipart boundary
+            "X-User-Role": currentRole
           },
           body: formData
         });
@@ -390,7 +444,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const data = await res.json();
 
-        if (fileNameDisplay) fileNameDisplay.textContent = selectedFile.name;
+        if (fileNameDisplay) fileNameDisplay.textContent = `${selectedFile.name} (View: ${data.applied_role || currentRole})`;
 
         renderKPIs(data);
         renderAllVisualizations(data.numeric_means);
@@ -427,6 +481,59 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!thead || !tbody) return;
     thead.innerHTML = `<tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr>`;
     tbody.innerHTML = rows.map(r => `<tr>${cols.map(c => `<td>${r[c] !== null ? r[c] : ''}</td>`).join('')}</tr>`).join('');
+  }
+
+  // --- PowerBI Styled Print & PDF Export Engine ---
+  const printDashboardBtn = document.getElementById('printDashboardBtn');
+  if (printDashboardBtn) {
+    printDashboardBtn.addEventListener('click', () => {
+      window.print();
+    });
+  }
+
+  const emailDashboardBtn = document.getElementById('emailDashboardBtn');
+  if (emailDashboardBtn) {
+    emailDashboardBtn.addEventListener('click', async () => {
+      const recipient = prompt("Enter the destination email address for this dashboard report:");
+      if (!recipient) return;
+
+      emailDashboardBtn.disabled = true;
+      emailDashboardBtn.textContent = "Generating PDF...";
+
+      const element = document.getElementById('metricsSection');
+      const opt = {
+        margin:       0.3,
+        filename:     'PowerBI_Executive_Dashboard.pdf',
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true },
+        jsPDF:        { unit: 'in', format: 'letter', orientation: 'landscape' }
+      };
+
+      try {
+        const pdfBase64 = await html2pdf().set(opt).from(element).outputPdf('datauristring');
+        emailDashboardBtn.textContent = "Dispatching Email...";
+
+        const res = await fetch(`${API_BASE}/api/reports/email`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            target_email: recipient,
+            business_name: "Enterprise Analytics",
+            role: currentRole,
+            pdf_base64: pdfBase64
+          })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Email delivery failed.");
+        alert(data.message);
+      } catch (err) {
+        alert(`Report Dispatch Error: ${err.message}`);
+      } finally {
+        emailDashboardBtn.disabled = false;
+        emailDashboardBtn.textContent = "✉️ Email PDF Report";
+      }
+    });
   }
 
   // --- Multi-Chart Engine ---
