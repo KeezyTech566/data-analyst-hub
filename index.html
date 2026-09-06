@@ -29,10 +29,10 @@
         </svg>
       </div>
       <h1>Enterprise Data Profiling & Analytics</h1>
-      <p class="hero-subtitle">Transform raw tabular CSV datasets into actionable metrics, distribution profiles, and structural summaries instantly.</p>
+      <p class="hero-subtitle">Transform raw tabular CSV datasets into actionable metrics, distribution profiles, and multi-dimensional visual summaries instantly.</p>
       <div class="feature-pills">
         <span>⚡ Real-Time Statistical Profiling</span>
-        <span>📊 Interactive Visualizations</span>
+        <span>📊 10+ Enterprise Visualizations</span>
         <span>🔒 Secure Multi-User Auth</span>
       </div>
       <div class="hero-actions">
@@ -145,7 +145,7 @@
       </div>
       <h3>Reset Password</h3>
       
-      <!-- Step 1: Request Reset Code/Token -->
+      <!-- Step 1: Request Reset Code -->
       <div id="resetStep1">
         <p class="modal-description">Enter the email associated with your account to receive a secure recovery code.</p>
         <div class="input-group">
@@ -159,7 +159,7 @@
         </div>
       </div>
 
-      <!-- Step 2: Enter Code & New Password -->
+      <!-- Step 2: Verify Code & Password -->
       <div id="resetStep2" class="hidden">
         <p class="modal-description">A 6-digit recovery code has been generated for your account.</p>
         <div class="input-group">
@@ -210,7 +210,7 @@
       <span id="loading" class="hidden">Waking up backend & analyzing data... please wait up to 45s.</span>
     </section>
 
-    <!-- Metrics & Visualization Section -->
+    <!-- Metrics & Full Visualization Suite -->
     <section id="metricsSection" class="hidden">
       <div class="metrics-header-bar">
         <h2>Analyzed Data: <span id="fileNameDisplay" class="highlight-name"></span></h2>
@@ -223,19 +223,67 @@
         <div class="card"><h3>Total Columns</h3><p id="colCount">-</p></div>
       </div>
 
-      <!-- Visualizations Section (Placed Above Table) -->
+      <!-- Comprehensive Visualizations (Placed Above Table) -->
       <div class="charts-grid">
+        <!-- 1. Column Chart -->
         <div class="card chart-box">
-          <h3>Column Averages (Bar)</h3>
+          <h3>Column Averages (Column Chart)</h3>
+          <canvas id="columnChart"></canvas>
+        </div>
+
+        <!-- 2. Horizontal Bar Chart -->
+        <div class="card chart-box">
+          <h3>Metric Ranking (Horizontal Bar Chart)</h3>
           <canvas id="barChart"></canvas>
         </div>
+
+        <!-- 3. Stacked Column Chart -->
         <div class="card chart-box">
-          <h3>Trend & Variance Profile (Line)</h3>
+          <h3>Segment Decomposition (Stacked Column)</h3>
+          <canvas id="stackedColumnChart"></canvas>
+        </div>
+
+        <!-- 4. Stacked Bar Chart -->
+        <div class="card chart-box">
+          <h3>Component Allocation (Stacked Bar)</h3>
+          <canvas id="stackedBarChart"></canvas>
+        </div>
+
+        <!-- 5. Line Chart -->
+        <div class="card chart-box">
+          <h3>Trend & Variance Trajectory (Line)</h3>
           <canvas id="lineChart"></canvas>
         </div>
+
+        <!-- 6. Doughnut / Pie Chart -->
         <div class="card chart-box">
           <h3>Metric Distribution Share (Doughnut)</h3>
           <canvas id="doughnutChart"></canvas>
+        </div>
+
+        <!-- 7. Waterfall Chart -->
+        <div class="card chart-box">
+          <h3>Cumulative Bridge (Waterfall Chart)</h3>
+          <canvas id="waterfallChart"></canvas>
+        </div>
+
+        <!-- 8. Funnel Conversion Chart -->
+        <div class="card chart-box">
+          <h3>Sequential Progression (Funnel Chart)</h3>
+          <canvas id="funnelChart"></canvas>
+        </div>
+
+        <!-- 9. Gauge KPI Chart -->
+        <div class="card chart-box gauge-center">
+          <h3>Aggregated Capacity Index (Gauge Meter)</h3>
+          <canvas id="gaugeChart"></canvas>
+          <div id="gaugeScore" class="gauge-value">-%</div>
+        </div>
+
+        <!-- 10. Matrix Correlation Heatmap -->
+        <div class="card chart-box">
+          <h3>Relationship Density (Matrix Chart)</h3>
+          <div id="matrixContainer" class="matrix-grid-wrapper"></div>
         </div>
       </div>
 
