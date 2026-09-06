@@ -167,14 +167,34 @@ async def analyze_csv(
     if df is None:
         raise HTTPException(status_code=400, detail="Unable to parse CSV. Incompatible file encoding.")
 
-    role = x_user_role.strip()
-    cols_lower = {c: c.lower() for c in df.columns}
+    # -------------------------------------------------------------
+    # Role Normalization Engine
+    # -------------------------------------------------------------
+    raw_role = x_user_role.strip()
+    role_lower = raw_role.lower()
+
+    if "chair" in role_lower:
+        role = "Chairman"
+    elif "cfo" in role_lower or "financial" in role_lower:
+        role = "Chief Financial Officer (CFO)"
+    elif "cto" in role_lower or "technology" in role_lower:
+        role = "Chief Technology Officer (CTO)"
+    elif "cio" in role_lower or "information" in role_lower:
+        role = "Chief Information Officer (CIO)"
+    elif "relationship" in role_lower or "rm" in role_lower:
+        role = "Relationship Manager (RM)"
+    elif "retail" in role_lower:
+        role = "Retail Officer"
+    else:
+        role = "Chairman"
 
     # Security keywords classification
     pii_keywords = ["email", "phone", "ssn", "nin", "bvn", "address", "customer_name", "driver_name"]
     compensation_keywords = ["salary", "bonus", "commission", "remuneration", "wage"]
     high_finance_keywords = ["profit", "ebitda", "margin", "revenue", "supplier_cost", "net_profit"]
     infra_tech_keywords = ["latency", "uptime", "server", "ip_address", "error_rate", "db_cluster"]
+
+    cols_lower = {c: c.lower() for c in df.columns}
 
     # -------------------------------------------------------------
     # 1. ROW-LEVEL SECURITY (RLS) - Filters Rows by Department/Location
@@ -189,52 +209,32 @@ async def analyze_csv(
         unique_vals = [v for v in df[filter_col].dropna().unique()]
         if len(unique_vals) > 1:
             if role == "Retail Officer":
-                # Branch-level isolation: Limits to first 2 regional store locations
                 df = df[df[filter_col].isin(unique_vals[:2])]
             elif role == "Relationship Manager (RM)":
-                # Portfolio segmentation: Access restricted to middle client desks
                 df = df[df[filter_col].isin(unique_vals[1:3])]
             elif role == "Chief Technology Officer (CTO)":
-                # Operations isolation: Retains first 3 operational centers
                 df = df[df[filter_col].isin(unique_vals[:3])]
             elif role == "Chief Information Officer (CIO)":
-                # Infrastructure isolation: Retains last 3 server/business nodes
                 df = df[df[filter_col].isin(unique_vals[-3:])]
-            # Chairman & CFO retain all regional rows
+            # Chairman & CFO retain all rows
 
     # -------------------------------------------------------------
     # 2. COLUMN-LEVEL SECURITY - Masks Sensitive Attributes
     # -------------------------------------------------------------
     if role == "Chairman":
-        # Full enterprise visibility across all dimensions
         pass
-
     elif role == "Chief Financial Officer (CFO)":
-        # Retains financials & payroll; strips raw tech logs
-        allowed_cols = [c for c, cl in cols_lower.items() if not any(k in cl for k in infra_tech_keywords)]
-        df = df[allowed_cols]
-
+        df = df[[c for c, cl in cols_lower.items() if not any(k in cl for k in infra_tech_keywords)]]
     elif role == "Chief Technology Officer (CTO)":
-        # Retains volume & speed; masks salaries, individual bonuses, and net profit
-        allowed_cols = [c for c, cl in cols_lower.items() if not any(k in cl for k in compensation_keywords + ["net_profit", "ebitda"])]
-        df = df[allowed_cols]
-
+        df = df[[c for c, cl in cols_lower.items() if not any(k in cl for k in compensation_keywords + ["net_profit", "ebitda"])]]
     elif role == "Chief Information Officer (CIO)":
-        # Retains architecture fields; strips employee/customer PII and bonus figures
-        allowed_cols = [c for c, cl in cols_lower.items() if not any(k in cl for k in pii_keywords + ["bonus"])]
-        df = df[allowed_cols]
-
+        df = df[[c for c, cl in cols_lower.items() if not any(k in cl for k in pii_keywords + ["bonus"])]]
     elif role == "Relationship Manager (RM)":
-        # Retains sales, units, and client indicators; blocks payroll, operational overhead, and supplier costs
         restricted = compensation_keywords + ["supplier_cost", "maintenance_cost", "operational_cost", "expense_ratio"]
-        allowed_cols = [c for c, cl in cols_lower.items() if not any(k in cl for k in restricted)]
-        df = df[allowed_cols]
-
+        df = df[[c for c, cl in cols_lower.items() if not any(k in cl for k in restricted)]]
     elif role == "Retail Officer":
-        # Strips all executive financial figures, supplier costs, volatility indices, and payroll
         restricted = high_finance_keywords + compensation_keywords + ["volatility", "aum"]
-        allowed_cols = [c for c, cl in cols_lower.items() if not any(k in cl for k in restricted)]
-        df = df[allowed_cols]
+        df = df[[c for c, cl in cols_lower.items() if not any(k in cl for k in restricted)]]
 
     # Clean numeric representations (stripping currency characters and commas)
     for col in df.columns:
