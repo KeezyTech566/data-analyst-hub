@@ -20,52 +20,99 @@
       <div class="feature-pills">
         <span>⚡ Real-Time Statistical Profiling</span>
         <span>📊 Interactive Visualizations</span>
-        <span>🔒 Secure Data Ingestion</span>
+        <span>🔒 Self-Serve Analyst Accounts</span>
       </div>
-      <button id="getStartedBtn" class="btn-primary btn-large">Access Analyst Portal</button>
+      <div class="hero-actions">
+        <button id="heroCreateAccountBtn" class="btn-primary btn-large">Create Free Account</button>
+        <button id="heroLoginBtn" class="btn-secondary btn-large">Sign In</button>
+      </div>
     </div>
   </section>
 
-  <!-- Authentication Section -->
-  <div id="authSection" class="auth-overlay hidden">
+  <!-- Login Section -->
+  <div id="loginSection" class="auth-overlay hidden">
     <div class="auth-card">
       <div class="logo-container">
         <img src="logo.png" alt="Data Analyst Hub Logo" class="brand-logo-small" />
       </div>
       <h2>Portal Login</h2>
-      <p class="auth-subtitle">Enter credentials to open workspace</p>
+      <p class="auth-subtitle">Enter your credentials to access the portal</p>
       
       <form id="loginForm">
         <div class="input-group">
-          <label for="username">Username</label>
-          <input type="text" id="username" placeholder="admin" required autocomplete="off">
+          <label for="loginUsername">Username</label>
+          <input type="text" id="loginUsername" placeholder="analyst_jane" required autocomplete="username">
         </div>
         <div class="input-group">
-          <label for="password">Password</label>
+          <label for="loginPassword">Password</label>
           <div class="password-wrapper">
-            <input type="password" id="password" placeholder="••••••••" required>
-            <button type="button" id="togglePasswordBtn" class="toggle-password-btn">Show</button>
+            <input type="password" id="loginPassword" placeholder="••••••••" required autocomplete="current-password">
+            <button type="button" id="toggleLoginPasswordBtn" class="toggle-password-btn">Show</button>
           </div>
         </div>
         <div class="auth-links">
           <button type="button" id="forgotPassLink" class="link-btn">Forgot password?</button>
         </div>
-        <p id="authError" class="auth-error hidden">Invalid username or password.</p>
+        <p id="loginError" class="auth-error hidden">Invalid username or password.</p>
         <button type="submit" class="btn-primary full-width">Sign In</button>
       </form>
+
+      <div class="auth-switch">
+        <p>Don't have an account? <button type="button" id="switchToRegisterBtn" class="link-btn highlight">Create Account</button></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create Account Section -->
+  <div id="registerSection" class="auth-overlay hidden">
+    <div class="auth-card">
+      <div class="logo-container">
+        <img src="logo.png" alt="Data Analyst Hub Logo" class="brand-logo-small" />
+      </div>
+      <h2>Create Account</h2>
+      <p class="auth-subtitle">Set up your personal analyst workspace</p>
+      
+      <form id="registerForm">
+        <div class="input-group">
+          <label for="registerUsername">Choose Username</label>
+          <input type="text" id="registerUsername" placeholder="analyst_jane" required autocomplete="username">
+        </div>
+        <div class="input-group">
+          <label for="registerPassword">Set Password</label>
+          <div class="password-wrapper">
+            <input type="password" id="registerPassword" placeholder="••••••••" minlength="6" required autocomplete="new-password">
+            <button type="button" id="toggleRegisterPasswordBtn" class="toggle-password-btn">Show</button>
+          </div>
+        </div>
+        <div class="input-group">
+          <label for="registerConfirmPassword">Confirm Password</label>
+          <input type="password" id="registerConfirmPassword" placeholder="••••••••" minlength="6" required autocomplete="new-password">
+        </div>
+        <p id="registerError" class="auth-error hidden">Error message</p>
+        <p id="registerSuccess" class="auth-success hidden">Account created successfully! Redirecting...</p>
+        <button type="submit" class="btn-primary full-width">Register & Enter</button>
+      </form>
+
+      <div class="auth-switch">
+        <p>Already have an account? <button type="button" id="switchToLoginBtn" class="link-btn highlight">Sign In</button></p>
+      </div>
     </div>
   </div>
 
   <!-- Forgot Password Modal -->
   <div id="forgotPassModal" class="modal-overlay hidden">
     <div class="modal-card">
-      <h3>Reset Credentials</h3>
-      <p>For demo access, authenticate using the default administrative credentials:</p>
-      <div class="credentials-box">
-        <p><strong>Username:</strong> <code>admin</code></p>
-        <p><strong>Password:</strong> <code>analyst123</code></p>
+      <h3>Reset Password</h3>
+      <p>Enter your username below to view your security hint or recover access:</p>
+      <div class="input-group" style="margin-top: 1rem;">
+        <label for="lookupUsername">Your Username</label>
+        <input type="text" id="lookupUsername" placeholder="e.g. analyst_jane">
       </div>
-      <button id="closeModalBtn" class="btn-secondary full-width">Close</button>
+      <p id="lookupResult" class="credentials-box hidden"></p>
+      <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+        <button type="button" id="findAccountBtn" class="btn-primary full-width">Lookup</button>
+        <button type="button" id="closeModalBtn" class="btn-secondary full-width">Close</button>
+      </div>
     </div>
   </div>
 
@@ -76,7 +123,10 @@
         <div class="logo-container">
           <img src="logo.png" alt="Data Analyst Hub Logo" class="brand-logo-small" />
         </div>
-        <button id="logoutBtn" class="btn-secondary">Log Out</button>
+        <div class="user-greeting">
+          <span>Logged in as: <strong id="loggedInUserDisplay" class="highlight-name"></strong></span>
+          <button id="logoutBtn" class="btn-secondary">Log Out</button>
+        </div>
       </div>
       <h1>Data Analyst Portal</h1>
       <p id="portalSubtitle">Upload a CSV dataset to execute automated backend profiling.</p>
@@ -102,7 +152,7 @@
         <div class="card"><h3>Total Columns</h3><p id="colCount">-</p></div>
       </div>
 
-      <!-- Charts Section (Placed Above Table) -->
+      <!-- Charts Section (Top) -->
       <div class="charts-grid">
         <div class="card chart-box">
           <h3>Column Averages (Bar)</h3>
@@ -118,7 +168,7 @@
         </div>
       </div>
 
-      <!-- Data Preview Table (Placed at Bottom) -->
+      <!-- Data Preview Table (Bottom) -->
       <div class="card table-container">
         <h3>Data Preview (First 5 Rows)</h3>
         <table id="dataTable">
