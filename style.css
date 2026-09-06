@@ -1,7 +1,10 @@
 :root {
   --bg: #0f172a;
   --surface: #1e293b;
+  --surface-hover: #334155;
   --primary: #38bdf8;
+  --primary-hover: #0ea5e9;
+  --danger: #f87171;
   --text: #f8fafc;
   --muted: #94a3b8;
   --border: #334155;
@@ -12,12 +15,230 @@ body {
   background-color: var(--bg);
   color: var(--text);
   margin: 0;
-  padding: 2rem;
+  padding: 1.5rem;
 }
 
 .container {
-  max-width: 1000px;
+  max-width: 1100px;
   margin: 0 auto;
+}
+
+/* Landing Page */
+.hero-container {
+  min-height: 80vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+.hero-content {
+  max-width: 680px;
+}
+
+.hero-content h1 {
+  font-size: 2.5rem;
+  margin-top: 1rem;
+}
+
+.hero-subtitle {
+  color: var(--muted);
+  font-size: 1.1rem;
+  line-height: 1.6;
+  margin-bottom: 2rem;
+}
+
+.feature-pills {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 2.5rem;
+}
+
+.feature-pills span {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 0.5rem 1rem;
+  border-radius: 9999px;
+  font-size: 0.85rem;
+}
+
+.btn-large {
+  padding: 0.85rem 2rem;
+  font-size: 1rem;
+}
+
+/* Auth & Modals */
+.auth-overlay, .modal-overlay {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 75vh;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 100;
+}
+
+.auth-card, .modal-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 2.5rem;
+  width: 100%;
+  max-width: 380px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+  text-align: center;
+}
+
+.auth-subtitle {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin-top: -0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.input-group {
+  text-align: left;
+  margin-bottom: 1.25rem;
+}
+
+.input-group label {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-bottom: 0.35rem;
+}
+
+.password-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-wrapper input {
+  width: 100%;
+  padding-right: 4rem;
+}
+
+.input-group input {
+  width: 100%;
+  padding: 0.65rem;
+  background: #0f172a;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  box-sizing: border-box;
+}
+
+.input-group input:focus {
+  outline: 2px solid var(--primary);
+  border-color: transparent;
+}
+
+.toggle-password-btn {
+  position: absolute;
+  right: 0.5rem;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.toggle-password-btn:hover {
+  color: var(--primary);
+}
+
+.auth-links {
+  text-align: right;
+  margin-top: -0.5rem;
+  margin-bottom: 1rem;
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  color: var(--primary);
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 0;
+}
+
+.link-btn:hover {
+  text-decoration: underline;
+}
+
+.credentials-box {
+  background: #0f172a;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.75rem;
+  margin: 1.25rem 0;
+  text-align: left;
+}
+
+.credentials-box code {
+  color: var(--primary);
+}
+
+.auth-error {
+  color: var(--danger);
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+/* Header & Logos */
+header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.brand-logo {
+  max-width: 90px;
+  height: auto;
+  border-radius: 12px;
+}
+
+.brand-logo-small {
+  max-width: 60px;
+  height: auto;
+  border-radius: 8px;
+}
+
+header p {
+  color: var(--muted);
+}
+
+/* Upload & Metrics Layout */
+.metrics-header-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.metrics-header-bar h2 {
+  margin: 0;
+  font-size: 1.3rem;
+}
+
+.highlight-name {
+  color: var(--primary);
+  font-weight: 600;
 }
 
 .upload-card, .card {
@@ -34,14 +255,59 @@ body {
   gap: 1rem;
 }
 
-button {
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.5rem;
+}
+
+.chart-box {
+  height: 380px;
+  display: flex;
+  flex-direction: column;
+}
+
+.chart-box canvas {
+  flex-grow: 1;
+  max-height: 300px;
+}
+
+/* Buttons */
+.btn-primary {
   background-color: var(--primary);
   color: #000;
   font-weight: 600;
   border: none;
-  padding: 0.6rem 1.2rem;
-  border-radius: 4px;
+  padding: 0.65rem 1.25rem;
+  border-radius: 6px;
   cursor: pointer;
+}
+
+.btn-primary:hover {
+  background-color: var(--primary-hover);
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  padding: 0.6rem 1.25rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.btn-secondary:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.full-width {
+  width: 100%;
+}
+
+/* Table */
+.table-container {
+  overflow-x: auto;
 }
 
 table {
@@ -57,5 +323,6 @@ th, td {
   font-size: 0.9rem;
 }
 
-.hidden { display: none; }
-.chart-box { height: 350px; }
+.hidden {
+  display: none !important;
+}
