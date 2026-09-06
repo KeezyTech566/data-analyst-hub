@@ -8,81 +8,288 @@ const BACKEND_URL = window.location.hostname === "localhost" || window.location.
   ? "http://127.0.0.1:8000/api/analyze"
   : "https://data-analyst-hub.onrender.com/api/analyze";
 
-// View Elements
+// View Containers
 const landingSection = document.getElementById('landingSection');
-const authSection = document.getElementById('authSection');
+const loginSection = document.getElementById('loginSection');
+const registerSection = document.getElementById('registerSection');
 const mainDashboard = document.getElementById('mainDashboard');
 const uploadSection = document.getElementById('uploadSection');
 const metricsSection = document.getElementById('metricsSection');
 
-// Auth & Modals
-const getStartedBtn = document.getElementById('getStartedBtn');
-const loginForm = document.getElementById('loginForm');
-const authError = document.getElementById('authError');
+// Navigation & Auth Buttons
+const heroCreateAccountBtn = document.getElementById('heroCreateAccountBtn');
+const heroLoginBtn = document.getElementById('heroLoginBtn');
+const switchToRegisterBtn = document.getElementById('switchToRegisterBtn');
+const switchToLoginBtn = document.getElementById('switchToLoginBtn');
 const logoutBtn = document.getElementById('logoutBtn');
-const passwordInput = document.getElementById('password');
-const togglePasswordBtn = document.getElementById('togglePasswordBtn');
+
+// Forms & Inputs
+const loginForm = document.getElementById('loginForm');
+const registerForm = document.getElementById('registerForm');
+const loginError = document.getElementById('loginError');
+const registerError = document.getElementById('registerError');
+const registerSuccess = document.getElementById('registerSuccess');
+const loggedInUserDisplay = document.getElementById('loggedInUserDisplay');
+
+// Password Toggles
+const toggleLoginPasswordBtn = document.getElementById('toggleLoginPasswordBtn');
+const loginPasswordInput = document.getElementById('loginPassword');
+const toggleRegisterPasswordBtn = document.getElementById('toggleRegisterPasswordBtn');
+const registerPasswordInput = document.getElementById('registerPassword');
+
+// Modal Elements
 const forgotPassLink = document.getElementById('forgotPassLink');
 const forgotPassModal = document.getElementById('forgotPassModal');
 const closeModalBtn = document.getElementById('closeModalBtn');
+const resetStep1 = document.getElementById('resetStep1');
+const resetStep2 = document.getElementById('resetStep2');
+const resetEmailInput = document.getElementById('resetEmailInput');
+const sendResetCodeBtn = document.getElementById('sendResetCodeBtn');
+const resetError = document.getElementById('resetError');
+const resetCodeInput = document.getElementById('resetCodeInput');
+const resetNewPassword = document.getElementById('resetNewPassword');
+const step2Error = document.getElementById('step2Error');
+const step2Success = document.getElementById('step2Success');
+const verifyAndResetBtn = document.getElementById('verifyAndResetBtn');
+const backToStep1Btn = document.getElementById('backToStep1Btn');
 
-// Data Elements
+// Upload Elements
 const fileInput = document.getElementById('csvFileInput');
 const fileNameDisplay = document.getElementById('fileNameDisplay');
 const resetUploadBtn = document.getElementById('resetUploadBtn');
 
-// Initial Route Check
-if (sessionStorage.getItem('isAuthenticated') === 'true') {
-  showDashboard();
+// Active recovery token tracker
+let activeRecovery = { email: null, code: null };
+
+// --- Storage Handlers ---
+function getRegisteredUsers() {
+  const users = localStorage.getItem('analyst_users_directory');
+  return users ? JSON.parse(users) : [];
 }
 
-// Landing to Auth
-getStartedBtn.addEventListener('click', () => {
+function saveRegisteredUser(userObj) {
+  const users = getRegisteredUsers();
+  users.push(userObj);
+  localStorage.setItem('analyst_users_directory', JSON.stringify(users));
+}
+
+function updatePasswordByEmail(email, newPassword) {
+  const users = getRegisteredUsers();
+  const idx = users.findIndex(u => u.email.toLowerCase() === email.toLowerCase());
+  if (idx !== -1) {
+    users[idx].password = newPassword;
+    localStorage.setItem('analyst_users_directory', JSON.stringify(users));
+    return true;
+  }
+  return false;
+}
+
+// --- Session Check ---
+const activeSession = sessionStorage.getItem('currentUser');
+if (activeSession) {
+  showDashboard(activeSession);
+}
+
+// View Switches
+heroCreateAccountBtn.addEventListener('click', () => {
   landingSection.classList.add('hidden');
-  authSection.classList.remove('hidden');
+  registerSection.classList.remove('hidden');
 });
 
-// Password Show/Hide Toggle
-togglePasswordBtn.addEventListener('click', () => {
-  const isPass = passwordInput.getAttribute('type') === 'password';
-  passwordInput.setAttribute('type', isPass ? 'text' : 'password');
-  togglePasswordBtn.textContent = isPass ? 'Hide' : 'Show';
+heroLoginBtn.addEventListener('click', () => {
+  landingSection.classList.add('hidden');
+  loginSection.classList.remove('hidden');
 });
 
-// Forgot Password Modal
-forgotPassLink.addEventListener('click', () => forgotPassModal.classList.remove('hidden'));
-closeModalBtn.addEventListener('click', () => forgotPassModal.classList.add('hidden'));
+switchToRegisterBtn.addEventListener('click', () => {
+  loginSection.classList.add('hidden');
+  registerSection.classList.remove('hidden');
+});
 
-// Login Submission
+switchToLoginBtn.addEventListener('click', () => {
+  registerSection.classList.add('hidden');
+  loginSection.classList.remove('hidden');
+});
+
+// Password Toggle Handlers
+toggleLoginPasswordBtn.addEventListener('click', () => {
+  const isPass = loginPasswordInput.getAttribute('type') === 'password';
+  loginPasswordInput.setAttribute('type', isPass ? 'text' : 'password');
+  toggleLoginPasswordBtn.textContent = isPass ? 'Hide' : 'Show';
+});
+
+toggleRegisterPasswordBtn.addEventListener('click', () => {
+  const isPass = registerPasswordInput.getAttribute('type') === 'password';
+  registerPasswordInput.setAttribute('type', isPass ? 'text' : 'password');
+  toggleRegisterPasswordBtn.textContent = isPass ? 'Hide' : 'Show';
+});
+
+// --- Register Handler ---
+registerForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const email = document.getElementById('registerEmail').value.trim().toLowerCase();
+  const username = document.getElementById('registerUsername').value.trim();
+  const password = registerPasswordInput.value;
+  const confirmPassword = document.getElementById('registerConfirmPassword').value;
+
+  registerError.classList.add('hidden');
+  registerSuccess.classList.add('hidden');
+
+  if (password !== confirmPassword) {
+    registerError.textContent = "Passwords do not match.";
+    registerError.classList.remove('hidden');
+    return;
+  }
+
+  const users = getRegisteredUsers();
+  const emailExists = users.some(u => u.email === email);
+  const usernameExists = users.some(u => u.username.toLowerCase() === username.toLowerCase());
+
+  if (emailExists) {
+    registerError.textContent = "An account with this email already exists.";
+    registerError.classList.remove('hidden');
+    return;
+  }
+
+  if (usernameExists) {
+    registerError.textContent = "This username is taken. Please select another.";
+    registerError.classList.remove('hidden');
+    return;
+  }
+
+  // Store new user
+  saveRegisteredUser({ email, username, password });
+
+  registerSuccess.classList.remove('hidden');
+  setTimeout(() => {
+    sessionStorage.setItem('currentUser', username);
+    registerForm.reset();
+    registerSuccess.classList.add('hidden');
+    registerSection.classList.add('hidden');
+    showDashboard(username);
+  }, 1000);
+});
+
+// --- Login Handler ---
 loginForm.addEventListener('submit', (e) => {
   e.preventDefault();
-  const user = document.getElementById('username').value.trim();
-  const pass = passwordInput.value;
+  const identifier = document.getElementById('loginIdentifier').value.trim().toLowerCase();
+  const password = loginPasswordInput.value;
 
-  if (user === 'admin' && pass === 'analyst123') {
-    sessionStorage.setItem('isAuthenticated', 'true');
-    authError.classList.add('hidden');
+  const users = getRegisteredUsers();
+  const user = users.find(u => 
+    (u.email.toLowerCase() === identifier || u.username.toLowerCase() === identifier) && 
+    u.password === password
+  );
+
+  if (user) {
+    sessionStorage.setItem('currentUser', user.username);
+    loginError.classList.add('hidden');
     loginForm.reset();
-    showDashboard();
+    loginSection.classList.add('hidden');
+    showDashboard(user.username);
   } else {
-    authError.classList.remove('hidden');
+    loginError.textContent = "Invalid email, username, or password.";
+    loginError.classList.remove('hidden');
   }
 });
 
+// --- Forgot Password Flow ---
+forgotPassLink.addEventListener('click', () => {
+  resetStep1.classList.remove('hidden');
+  resetStep2.classList.add('hidden');
+  resetError.classList.add('hidden');
+  resetEmailInput.value = '';
+  forgotPassModal.classList.remove('hidden');
+});
+
+closeModalBtn.addEventListener('click', () => {
+  forgotPassModal.classList.add('hidden');
+});
+
+backToStep1Btn.addEventListener('click', () => {
+  resetStep2.classList.add('hidden');
+  resetStep1.classList.remove('hidden');
+});
+
+sendResetCodeBtn.addEventListener('click', () => {
+  const email = resetEmailInput.value.trim().toLowerCase();
+  resetError.classList.add('hidden');
+
+  if (!email) {
+    resetError.textContent = "Please enter your registered email address.";
+    resetError.classList.remove('hidden');
+    return;
+  }
+
+  const users = getRegisteredUsers();
+  const account = users.find(u => u.email.toLowerCase() === email);
+
+  if (!account) {
+    resetError.textContent = "No account found matching that email address.";
+    resetError.classList.remove('hidden');
+    return;
+  }
+
+  // Generate 6-digit recovery code
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  activeRecovery = { email, code };
+
+  // In live production, dispatch this code to the user's inbox via API:
+  alert(`[Live Dispatch Simulation]\nA verification code has been sent to ${email}:\n\nCode: ${code}`);
+
+  resetStep1.classList.add('hidden');
+  resetStep2.classList.remove('hidden');
+});
+
+verifyAndResetBtn.addEventListener('click', () => {
+  const enteredCode = resetCodeInput.value.trim();
+  const newPass = resetNewPassword.value;
+
+  step2Error.classList.add('hidden');
+  step2Success.classList.add('hidden');
+
+  if (enteredCode !== activeRecovery.code) {
+    step2Error.textContent = "Invalid recovery code. Please check and try again.";
+    step2Error.classList.remove('hidden');
+    return;
+  }
+
+  if (newPass.length < 6) {
+    step2Error.textContent = "Password must be at least 6 characters long.";
+    step2Error.classList.remove('hidden');
+    return;
+  }
+
+  const updated = updatePasswordByEmail(activeRecovery.email, newPass);
+
+  if (updated) {
+    step2Success.classList.remove('hidden');
+    setTimeout(() => {
+      forgotPassModal.classList.add('hidden');
+      resetCodeInput.value = '';
+      resetNewPassword.value = '';
+      step2Success.classList.add('hidden');
+    }, 1500);
+  } else {
+    step2Error.textContent = "Unable to update credentials. Please restart recovery.";
+    step2Error.classList.remove('hidden');
+  }
+});
+
+// --- Session & Workspace ---
 logoutBtn.addEventListener('click', () => {
-  sessionStorage.removeItem('isAuthenticated');
+  sessionStorage.removeItem('currentUser');
   mainDashboard.classList.add('hidden');
-  authSection.classList.add('hidden');
   landingSection.classList.remove('hidden');
 });
 
-function showDashboard() {
-  landingSection.classList.add('hidden');
-  authSection.classList.add('hidden');
+function showDashboard(username) {
+  loggedInUserDisplay.textContent = username;
   mainDashboard.classList.remove('hidden');
 }
 
-// CSV File Upload & Processing
+// --- CSV File Ingestion & Visualizations ---
 document.getElementById('uploadBtn').addEventListener('click', async () => {
   const loader = document.getElementById('loading');
 
@@ -110,15 +317,12 @@ document.getElementById('uploadBtn').addEventListener('click', async () => {
 
     const data = await res.json();
 
-    // Display selected file name
     fileNameDisplay.textContent = selectedFile.name;
 
-    // Render Data
     renderKPIs(data);
     renderAllCharts(data.numeric_means);
     renderTable(data.columns, data.preview);
 
-    // Hide the file upload card and reveal the metrics
     uploadSection.classList.add('hidden');
     metricsSection.classList.remove('hidden');
   } catch (err) {
@@ -128,7 +332,6 @@ document.getElementById('uploadBtn').addEventListener('click', async () => {
   }
 });
 
-// Analyze Another File Action
 resetUploadBtn.addEventListener('click', () => {
   fileInput.value = '';
   metricsSection.classList.add('hidden');
