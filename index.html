@@ -3,29 +3,122 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Analyst Toolkit</title>
+  <title>Data Analyst Hub</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-  <div class="container">
+
+  <!-- Landing Page Section -->
+  <section id="landingSection" class="hero-container">
+    <div class="hero-content">
+      <div class="logo-container">
+        <img src="logo.png" alt="Data Analyst Hub Logo" class="brand-logo" />
+      </div>
+      <h1>Enterprise Data Profiling & Analytics</h1>
+      <p class="hero-subtitle">Transform raw tabular CSV datasets into actionable metrics, distribution profiles, and structural summaries instantly.</p>
+      <div class="feature-pills">
+        <span>⚡ Real-Time Statistical Profiling</span>
+        <span>📊 Interactive Visualizations</span>
+        <span>🔒 Secure Data Ingestion</span>
+      </div>
+      <button id="getStartedBtn" class="btn-primary btn-large">Access Analyst Portal</button>
+    </div>
+  </section>
+
+  <!-- Authentication Section -->
+  <div id="authSection" class="auth-overlay hidden">
+    <div class="auth-card">
+      <div class="logo-container">
+        <img src="logo.png" alt="Data Analyst Hub Logo" class="brand-logo-small" />
+      </div>
+      <h2>Portal Login</h2>
+      <p class="auth-subtitle">Enter credentials to open workspace</p>
+      
+      <form id="loginForm">
+        <div class="input-group">
+          <label for="username">Username</label>
+          <input type="text" id="username" placeholder="admin" required autocomplete="off">
+        </div>
+        <div class="input-group">
+          <label for="password">Password</label>
+          <div class="password-wrapper">
+            <input type="password" id="password" placeholder="••••••••" required>
+            <button type="button" id="togglePasswordBtn" class="toggle-password-btn">Show</button>
+          </div>
+        </div>
+        <div class="auth-links">
+          <button type="button" id="forgotPassLink" class="link-btn">Forgot password?</button>
+        </div>
+        <p id="authError" class="auth-error hidden">Invalid username or password.</p>
+        <button type="submit" class="btn-primary full-width">Sign In</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Forgot Password Modal -->
+  <div id="forgotPassModal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <h3>Reset Credentials</h3>
+      <p>For demo access, authenticate using the default administrative credentials:</p>
+      <div class="credentials-box">
+        <p><strong>Username:</strong> <code>admin</code></p>
+        <p><strong>Password:</strong> <code>analyst123</code></p>
+      </div>
+      <button id="closeModalBtn" class="btn-secondary full-width">Close</button>
+    </div>
+  </div>
+
+  <!-- Main Dashboard View -->
+  <div id="mainDashboard" class="container hidden">
     <header>
+      <div class="header-top">
+        <div class="logo-container">
+          <img src="logo.png" alt="Data Analyst Hub Logo" class="brand-logo-small" />
+        </div>
+        <button id="logoutBtn" class="btn-secondary">Log Out</button>
+      </div>
       <h1>Data Analyst Portal</h1>
-      <p>Upload a CSV to inspect data profiling and instant aggregations.</p>
+      <p id="portalSubtitle">Upload a CSV dataset to execute automated backend profiling.</p>
     </header>
 
-    <section class="upload-card">
+    <!-- Upload Card -->
+    <section id="uploadSection" class="upload-card">
       <input type="file" id="csvFileInput" accept=".csv">
-      <button id="uploadBtn">Analyze Dataset</button>
-      <span id="loading" class="hidden">Processing...</span>
+      <button id="uploadBtn" class="btn-primary">Analyze Dataset</button>
+      <span id="loading" class="hidden">Waking up backend & analyzing data... please wait up to 45s.</span>
     </section>
 
+    <!-- Metrics & Visualization Section -->
     <section id="metricsSection" class="hidden">
+      <div class="metrics-header-bar">
+        <h2>Analyzed Data: <span id="fileNameDisplay" class="highlight-name"></span></h2>
+        <button id="resetUploadBtn" class="btn-primary">Analyze Another File</button>
+      </div>
+
+      <!-- KPI Summary Cards -->
       <div class="kpi-grid">
         <div class="card"><h3>Total Rows</h3><p id="rowCount">-</p></div>
         <div class="card"><h3>Total Columns</h3><p id="colCount">-</p></div>
       </div>
 
+      <!-- Charts Section (Placed Above Table) -->
+      <div class="charts-grid">
+        <div class="card chart-box">
+          <h3>Column Averages (Bar)</h3>
+          <canvas id="barChart"></canvas>
+        </div>
+        <div class="card chart-box">
+          <h3>Trend & Variance Profile (Line)</h3>
+          <canvas id="lineChart"></canvas>
+        </div>
+        <div class="card chart-box">
+          <h3>Metric Distribution Share (Doughnut)</h3>
+          <canvas id="doughnutChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Data Preview Table (Placed at Bottom) -->
       <div class="card table-container">
         <h3>Data Preview (First 5 Rows)</h3>
         <table id="dataTable">
@@ -33,13 +126,9 @@
           <tbody id="tableBody"></tbody>
         </table>
       </div>
-
-      <div class="card chart-box">
-        <h3>Numeric Distribution</h3>
-        <canvas id="analyticsChart"></canvas>
-      </div>
     </section>
   </div>
+
   <script src="app.js"></script>
 </body>
 </html>
