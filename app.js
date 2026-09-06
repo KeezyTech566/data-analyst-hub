@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
     ? "http://127.0.0.1:8000"
     : "https://data-analyst-hub.onrender.com";
 
-  const BACKEND_URL = `${API_BASE}/api/analyze`;
+  const BACKEND_URL = `${API_BASE}/api/analyze/`;
 
   // View Containers
   const landingSection = document.getElementById('landingSection');
@@ -261,9 +261,12 @@ document.addEventListener('DOMContentLoaded', () => {
       sendResetCodeBtn.textContent = "Sending email...";
 
       try {
-        const res = await fetch(`${API_BASE}/api/auth/forgot-password`, {
+        const res = await fetch(`${API_BASE}/api/auth/forgot-password/`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { 
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+          },
           body: JSON.stringify({ email: email })
         });
 
@@ -301,9 +304,12 @@ document.addEventListener('DOMContentLoaded', () => {
       verifyAndResetBtn.textContent = "Verifying...";
 
       try {
-        const res = await fetch(`${API_BASE}/api/auth/verify-reset`, {
+        const res = await fetch(`${API_BASE}/api/auth/verify-reset/`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { 
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+          },
           body: JSON.stringify({
             email: activeRecovery.email,
             code: enteredCode,
@@ -370,6 +376,10 @@ document.addEventListener('DOMContentLoaded', () => {
       try {
         const res = await fetch(BACKEND_URL, {
           method: "POST",
+          headers: {
+            "Accept": "application/json"
+            // Note: Do NOT set Content-Type here; browser must auto-set multipart boundary
+          },
           body: formData
         });
 
