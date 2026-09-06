@@ -11,9 +11,12 @@ let charts = {
   gauge: null
 };
 
-const BACKEND_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
-  ? "http://127.0.0.1:8000/api/analyze"
-  : "https://data-analyst-hub.onrender.com/api/analyze";
+// Explicit Backend Base & Endpoint Configuration
+const API_BASE = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+  ? "http://127.0.0.1:8000"
+  : "https://data-analyst-hub.onrender.com";
+
+const BACKEND_URL = `${API_BASE}/api/analyze`;
 
 // View Containers
 const landingSection = document.getElementById('landingSection');
@@ -232,7 +235,6 @@ sendResetCodeBtn.addEventListener('click', async () => {
   sendResetCodeBtn.textContent = "Sending email...";
 
   try {
-    const API_BASE = BACKEND_URL.replace("/api/analyze", "");
     const res = await fetch(`${API_BASE}/api/auth/forgot-password`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -271,7 +273,6 @@ verifyAndResetBtn.addEventListener('click', async () => {
   verifyAndResetBtn.textContent = "Verifying...";
 
   try {
-    const API_BASE = BACKEND_URL.replace("/api/analyze", "");
     const res = await fetch(`${API_BASE}/api/auth/verify-reset`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -389,7 +390,6 @@ function renderAllVisualizations(means) {
     '#fbbf24', '#a78bfa', '#f87171', '#2dd4bf'
   ];
 
-  // Destroy previous instances to avoid rendering artifacts
   Object.keys(charts).forEach(key => {
     if (charts[key]) charts[key].destroy();
   });
@@ -524,7 +524,7 @@ function renderAllVisualizations(means) {
     }
   });
 
-  // 7. Waterfall Chart (Calculated incremental floating bars)
+  // 7. Waterfall Chart
   let cumulative = 0;
   const waterfallRanges = values.map(v => {
     const prev = cumulative;
@@ -550,7 +550,7 @@ function renderAllVisualizations(means) {
     }
   });
 
-  // 8. Funnel Conversion Chart (Sorted descending staged progression)
+  // 8. Funnel Conversion Chart
   const funnelSorted = [...values].sort((a, b) => b - a);
   const funnelCtx = document.getElementById('funnelChart').getContext('2d');
   charts.funnel = new Chart(funnelCtx, {
@@ -571,9 +571,9 @@ function renderAllVisualizations(means) {
     }
   });
 
-  // 9. Gauge KPI Meter (Semi-doughnut gauge 0-100%)
+  // 9. Gauge KPI Meter
   const gaugeCtx = document.getElementById('gaugeChart').getContext('2d');
-  const normalizedScore = 78; // Calculated capacity score
+  const normalizedScore = 78;
   charts.gauge = new Chart(gaugeCtx, {
     type: 'doughnut',
     data: {
@@ -605,7 +605,7 @@ function renderAllVisualizations(means) {
 // Matrix Heatmap Builder
 function renderCorrelationMatrix(cols) {
   const container = document.getElementById('matrixContainer');
-  const maxCols = cols.slice(0, 6); // Keep to a clean 6x6 matrix maximum
+  const maxCols = cols.slice(0, 6);
 
   let html = '<table class="matrix-table"><thead><tr><th>Metric</th>';
   maxCols.forEach(c => { html += `<th>${c.substring(0, 8)}</th>`; });
@@ -614,7 +614,6 @@ function renderCorrelationMatrix(cols) {
   maxCols.forEach((rowCol, i) => {
     html += `<tr><th>${rowCol.substring(0, 8)}</th>`;
     maxCols.forEach((colCol, j) => {
-      // Deterministic correlation coefficient simulation based on dimension index
       const corr = i === j ? 1.0 : (Math.sin(i + j) * 0.8).toFixed(2);
       const alpha = Math.abs(corr);
       const bg = corr >= 0 ? `rgba(56, 189, 248, ${alpha})` : `rgba(248, 113, 113, ${alpha})`;
