@@ -19,12 +19,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const BACKEND_URL = `${API_BASE}/api/analyze`;
 
-  // --- Security & Role-Level Security Context ---
+  // Retain active file and role in memory for instant switching
+  let activeCachedFile = null;
   let currentRole = "Chairman";
+
   const userRoleSelect = document.getElementById('userRoleSelect');
   if (userRoleSelect) {
     userRoleSelect.addEventListener('change', (e) => {
       currentRole = e.target.value;
+      // Auto re-analyze dataset if a file is already loaded
+      if (activeCachedFile) {
+        processCSVAnalysis(activeCachedFile);
+      }
     });
   }
 
@@ -353,6 +359,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (logoutBtn) {
     logoutBtn.addEventListener('click', () => {
       sessionStorage.removeItem('currentUser');
+      activeCachedFile = null;
       mainDashboard.classList.add('hidden');
       landingSection.classList.remove('hidden');
     });
@@ -412,57 +419,64 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // --- CSV Ingestion & Profiling (with RLS Role Header) ---
-  if (uploadBtn) {
-    uploadBtn.addEventListener('click', async () => {
-      const loader = document.getElementById('loading');
+  // --- Central CSV Analysis Engine ---
+  async function processCSVAnalysis(fileObj) {
+    const loader = document.getElementById('loading');
+    if (loader) loader.classList.remove('hidden');
 
+    const formData = new FormData();
+    formData.append("file", fileObj);
+
+    try {
+      const res = await fetch(BACKEND_URL, {
+        method: "POST",
+        headers: {
+          "X-User-Role": currentRole
+        },
+        body: formData
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || `Server responded with status ${res.status}`);
+      }
+
+      const data = await res.json();
+
+      // Explicitly mirror the verified backend applied role
+      if (fileNameDisplay) {
+        fileNameDisplay.textContent = `${fileObj.name} (View: ${data.applied_role || currentRole})`;
+      }
+
+      renderKPIs(data);
+      renderAllVisualizations(data.numeric_means);
+      renderTable(data.columns, data.preview);
+
+      uploadSection.classList.add('hidden');
+      metricsSection.classList.remove('hidden');
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      if (loader) loader.classList.add('hidden');
+    }
+  }
+
+  // Trigger from user clicking "Analyze Dataset"
+  if (uploadBtn) {
+    uploadBtn.addEventListener('click', () => {
       if (!fileInput.files[0]) {
         alert("Please select a CSV file first.");
         return;
       }
-
-      const selectedFile = fileInput.files[0];
-      const formData = new FormData();
-      formData.append("file", selectedFile);
-
-      if (loader) loader.classList.remove('hidden');
-
-      try {
-        const res = await fetch(BACKEND_URL, {
-          method: "POST",
-          headers: {
-            "X-User-Role": currentRole
-          },
-          body: formData
-        });
-
-        if (!res.ok) {
-          const errData = await res.json().catch(() => ({}));
-          throw new Error(errData.detail || `Server responded with status ${res.status}`);
-        }
-
-        const data = await res.json();
-
-        if (fileNameDisplay) fileNameDisplay.textContent = `${selectedFile.name} (View: ${data.applied_role || currentRole})`;
-
-        renderKPIs(data);
-        renderAllVisualizations(data.numeric_means);
-        renderTable(data.columns, data.preview);
-
-        uploadSection.classList.add('hidden');
-        metricsSection.classList.remove('hidden');
-      } catch (err) {
-        alert(err.message);
-      } finally {
-        if (loader) loader.classList.add('hidden');
-      }
+      activeCachedFile = fileInput.files[0];
+      processCSVAnalysis(activeCachedFile);
     });
   }
 
   if (resetUploadBtn) {
     resetUploadBtn.addEventListener('click', () => {
       fileInput.value = '';
+      activeCachedFile = null;
       metricsSection.classList.add('hidden');
       uploadSection.classList.remove('hidden');
     });
