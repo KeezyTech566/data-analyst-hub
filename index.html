@@ -6,6 +6,7 @@
   <title>Data Analyst Hub</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
 
@@ -180,6 +181,44 @@
     </div>
   </div>
 
+  <!-- Onboarding Modal -->
+  <div id="onboardModal" class="modal-overlay hidden">
+    <div class="modal-card max-w-lg">
+      <h3 style="margin-bottom: 0.5rem;">🏢 Business Customer Onboarding</h3>
+      <p class="modal-description">Establish your business tenant and configure access controls for your team.</p>
+      
+      <div style="display: flex; flex-direction: column; gap: 0.75rem; text-align: left;">
+        <div class="input-group">
+          <label for="onboardBizName">Business Name</label>
+          <input type="text" id="onboardBizName" placeholder="e.g., Nexus Logistics" required>
+        </div>
+        <div class="input-group">
+          <label for="onboardBizEmail">Official Business Email</label>
+          <input type="email" id="onboardBizEmail" placeholder="admin@nexuslogistics.com" required>
+        </div>
+        <div class="input-group">
+          <label for="onboardIndustry">Industry</label>
+          <select id="onboardIndustry" style="width: 100%; background: #0f172a; border: 1px solid #334155; border-radius: 6px; padding: 0.6rem; color: #fff;">
+            <option value="Finance">Financial Services & Banking</option>
+            <option value="SupplyChain">Supply Chain & Logistics</option>
+            <option value="Retail">Retail & E-commerce</option>
+          </select>
+        </div>
+        <div style="border-top: 1px solid #334155; padding-top: 0.75rem;">
+          <p style="font-size: 0.8rem; font-weight: 600; color: #38bdf8; margin-bottom: 0.5rem;">Row-Level Security Role Credentials</p>
+          <input type="password" id="keyChairman" placeholder="Chairman Security Access Key" style="width: 100%; background: #0f172a; border: 1px solid #334155; border-radius: 6px; padding: 0.6rem; color: #fff; margin-bottom: 0.5rem;">
+          <input type="password" id="keyCTO" placeholder="CTO Security Access Key" style="width: 100%; background: #0f172a; border: 1px solid #334155; border-radius: 6px; padding: 0.6rem; color: #fff; margin-bottom: 0.5rem;">
+          <input type="password" id="keyRetail" placeholder="Retail Officer Access Key" style="width: 100%; background: #0f172a; border: 1px solid #334155; border-radius: 6px; padding: 0.6rem; color: #fff;">
+        </div>
+      </div>
+      
+      <div class="modal-actions" style="margin-top: 1.25rem;">
+        <button id="submitOnboardBtn" class="btn-primary full-width">Complete Onboarding</button>
+        <button id="closeOnboardBtn" class="btn-secondary full-width">Cancel</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Main Dashboard View -->
   <div id="mainDashboard" class="container hidden">
     <header>
@@ -195,6 +234,20 @@
           </svg>
         </div>
         <div class="user-greeting">
+          <!-- Onboard Action & RLS Role Switcher -->
+          <div style="display: flex; align-items: center; gap: 0.75rem; margin-right: 0.5rem;">
+            <button id="openOnboardBtn" class="btn-secondary" style="font-size: 0.8rem; padding: 0.35rem 0.7rem; color: #38bdf8;">
+              + Onboard New Business
+            </button>
+            <div style="display: flex; align-items: center; gap: 0.4rem;">
+              <label for="userRoleSelect" style="font-size: 0.8rem; color: #94a3b8; font-weight: 500;">RLS Role:</label>
+              <select id="userRoleSelect" style="background: #1e293b; color: #fff; border: 1px solid #334155; border-radius: 4px; padding: 0.35rem 0.5rem; font-size: 0.8rem;">
+                <option value="Chairman">Chairman (Full Visibility)</option>
+                <option value="CTO">CTO (Technical / Operational)</option>
+                <option value="Retail Officer">Retail Officer (Restricted Financials)</option>
+              </select>
+            </div>
+          </div>
           <span>Active Session: <strong id="loggedInUserDisplay" class="highlight-name"></strong></span>
           <button id="logoutBtn" class="btn-secondary">Log Out</button>
         </div>
@@ -212,9 +265,21 @@
 
     <!-- Metrics & Full Visualization Suite -->
     <section id="metricsSection" class="hidden">
-      <div class="metrics-header-bar">
-        <h2>Analyzed Data: <span id="fileNameDisplay" class="highlight-name"></span></h2>
-        <button id="resetUploadBtn" class="btn-primary">Analyze Another File</button>
+      <!-- Executive Summary Header & Export Controls -->
+      <div class="metrics-header-bar" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; padding-bottom: 1rem; margin-bottom: 1.5rem;">
+        <div>
+          <h2>Analyzed Data: <span id="fileNameDisplay" class="highlight-name"></span></h2>
+          <p style="font-size: 0.85rem; color: #94a3b8; margin-top: 0.25rem;">PowerBI layout rendering with active Row-Level Security filtering.</p>
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <button id="printDashboardBtn" class="btn-secondary" style="font-size: 0.85rem; padding: 0.5rem 1rem;">
+            🖨️ Print Dashboard
+          </button>
+          <button id="emailDashboardBtn" class="btn-primary" style="font-size: 0.85rem; padding: 0.5rem 1rem;">
+            ✉️ Email PDF Report
+          </button>
+          <button id="resetUploadBtn" class="btn-secondary" style="font-size: 0.85rem; padding: 0.5rem 1rem;">Analyze Another File</button>
+        </div>
       </div>
 
       <!-- KPI Summary Cards -->
