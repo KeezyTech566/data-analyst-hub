@@ -37,7 +37,7 @@ const loginPasswordInput = document.getElementById('loginPassword');
 const toggleRegisterPasswordBtn = document.getElementById('toggleRegisterPasswordBtn');
 const registerPasswordInput = document.getElementById('registerPassword');
 
-// Modal Elements
+// Modal & Recovery Elements
 const forgotPassLink = document.getElementById('forgotPassLink');
 const forgotPassModal = document.getElementById('forgotPassModal');
 const closeModalBtn = document.getElementById('closeModalBtn');
@@ -58,8 +58,8 @@ const fileInput = document.getElementById('csvFileInput');
 const fileNameDisplay = document.getElementById('fileNameDisplay');
 const resetUploadBtn = document.getElementById('resetUploadBtn');
 
-// Active recovery token tracker
-let activeRecovery = { email: null, code: null };
+// Active recovery tracker
+let activeRecovery = { email: null };
 
 // --- Storage Handlers ---
 function getRegisteredUsers() {
@@ -84,13 +84,13 @@ function updatePasswordByEmail(email, newPassword) {
   return false;
 }
 
-// --- Session Check ---
+// --- Session Verification ---
 const activeSession = sessionStorage.getItem('currentUser');
 if (activeSession) {
   showDashboard(activeSession);
 }
 
-// View Switches
+// --- View Router Handlers ---
 heroCreateAccountBtn.addEventListener('click', () => {
   landingSection.classList.add('hidden');
   registerSection.classList.remove('hidden');
@@ -111,7 +111,7 @@ switchToLoginBtn.addEventListener('click', () => {
   loginSection.classList.remove('hidden');
 });
 
-// Password Toggle Handlers
+// --- Password Visibility Toggles ---
 toggleLoginPasswordBtn.addEventListener('click', () => {
   const isPass = loginPasswordInput.getAttribute('type') === 'password';
   loginPasswordInput.setAttribute('type', isPass ? 'text' : 'password');
@@ -124,7 +124,7 @@ toggleRegisterPasswordBtn.addEventListener('click', () => {
   toggleRegisterPasswordBtn.textContent = isPass ? 'Hide' : 'Show';
 });
 
-// --- Register Handler ---
+// --- Registration Flow ---
 registerForm.addEventListener('submit', (e) => {
   e.preventDefault();
   const email = document.getElementById('registerEmail').value.trim().toLowerCase();
@@ -152,12 +152,11 @@ registerForm.addEventListener('submit', (e) => {
   }
 
   if (usernameExists) {
-    registerError.textContent = "This username is taken. Please select another.";
+    registerError.textContent = "This username is taken. Please choose another.";
     registerError.classList.remove('hidden');
     return;
   }
 
-  // Store new user
   saveRegisteredUser({ email, username, password });
 
   registerSuccess.classList.remove('hidden');
@@ -170,15 +169,15 @@ registerForm.addEventListener('submit', (e) => {
   }, 1000);
 });
 
-// --- Login Handler ---
+// --- Login Flow ---
 loginForm.addEventListener('submit', (e) => {
   e.preventDefault();
   const identifier = document.getElementById('loginIdentifier').value.trim().toLowerCase();
   const password = loginPasswordInput.value;
 
   const users = getRegisteredUsers();
-  const user = users.find(u => 
-    (u.email.toLowerCase() === identifier || u.username.toLowerCase() === identifier) && 
+  const user = users.find(u =>
+    (u.email.toLowerCase() === identifier || u.username.toLowerCase() === identifier) &&
     u.password === password
   );
 
@@ -194,7 +193,7 @@ loginForm.addEventListener('submit', (e) => {
   }
 });
 
-// --- Forgot Password Flow ---
+// --- Password Recovery Flow ---
 forgotPassLink.addEventListener('click', () => {
   resetStep1.classList.remove('hidden');
   resetStep2.classList.add('hidden');
@@ -212,7 +211,8 @@ backToStep1Btn.addEventListener('click', () => {
   resetStep1.classList.remove('hidden');
 });
 
-sendResetCodeBtn.addEventListener('click', () => {
+// Dispatch real email via FastAPI backend
+sendResetCodeBtn.addEventListener('click', async () => {
   const email = resetEmailInput.value.trim().toLowerCase();
   resetError.classList.add('hidden');
 
@@ -231,29 +231,41 @@ sendResetCodeBtn.addEventListener('click', () => {
     return;
   }
 
-  // Generate 6-digit recovery code
-  const code = Math.floor(100000 + Math.random() * 900000).toString();
-  activeRecovery = { email, code };
+  sendResetCodeBtn.disabled = true;
+  sendResetCodeBtn.textContent = "Sending email...";
 
-  // In live production, dispatch this code to the user's inbox via API:
-  alert(`[Live Dispatch Simulation]\nA verification code has been sent to ${email}:\n\nCode: ${code}`);
+  try {
+    const API_BASE = BACKEND_URL.replace("/api/analyze", "");
+    const res = await fetch(`${API_BASE}/api/auth/forgot-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email })
+    });
 
-  resetStep1.classList.add('hidden');
-  resetStep2.classList.remove('hidden');
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.detail || "Unable to send verification email.");
+    }
+
+    activeRecovery.email = email;
+    resetStep1.classList.add('hidden');
+    resetStep2.classList.remove('hidden');
+  } catch (err) {
+    resetError.textContent = err.message;
+    resetError.classList.remove('hidden');
+  } finally {
+    sendResetCodeBtn.disabled = false;
+    sendResetCodeBtn.textContent = "Send Recovery Code";
+  }
 });
 
-verifyAndResetBtn.addEventListener('click', () => {
+// Verify recovery code and save new password
+verifyAndResetBtn.addEventListener('click', async () => {
   const enteredCode = resetCodeInput.value.trim();
   const newPass = resetNewPassword.value;
 
   step2Error.classList.add('hidden');
   step2Success.classList.add('hidden');
-
-  if (enteredCode !== activeRecovery.code) {
-    step2Error.textContent = "Invalid recovery code. Please check and try again.";
-    step2Error.classList.remove('hidden');
-    return;
-  }
 
   if (newPass.length < 6) {
     step2Error.textContent = "Password must be at least 6 characters long.";
@@ -261,23 +273,48 @@ verifyAndResetBtn.addEventListener('click', () => {
     return;
   }
 
-  const updated = updatePasswordByEmail(activeRecovery.email, newPass);
+  verifyAndResetBtn.disabled = true;
+  verifyAndResetBtn.textContent = "Verifying...";
 
-  if (updated) {
+  try {
+    const API_BASE = BACKEND_URL.replace("/api/analyze", "");
+    const res = await fetch(`${API_BASE}/api/auth/verify-reset`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: activeRecovery.email,
+        code: enteredCode,
+        new_password: newPass
+      })
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.detail || "Verification failed.");
+    }
+
+    updatePasswordByEmail(activeRecovery.email, newPass);
+
+    step2Success.textContent = "Password updated! You can now log in.";
     step2Success.classList.remove('hidden');
+
     setTimeout(() => {
       forgotPassModal.classList.add('hidden');
       resetCodeInput.value = '';
       resetNewPassword.value = '';
       step2Success.classList.add('hidden');
     }, 1500);
-  } else {
-    step2Error.textContent = "Unable to update credentials. Please restart recovery.";
+
+  } catch (err) {
+    step2Error.textContent = err.message;
     step2Error.classList.remove('hidden');
+  } finally {
+    verifyAndResetBtn.disabled = false;
+    verifyAndResetBtn.textContent = "Update Password";
   }
 });
 
-// --- Session & Workspace ---
+// --- Session Handlers ---
 logoutBtn.addEventListener('click', () => {
   sessionStorage.removeItem('currentUser');
   mainDashboard.classList.add('hidden');
@@ -289,7 +326,7 @@ function showDashboard(username) {
   mainDashboard.classList.remove('hidden');
 }
 
-// --- CSV File Ingestion & Visualizations ---
+// --- CSV Ingestion & Profiling ---
 document.getElementById('uploadBtn').addEventListener('click', async () => {
   const loader = document.getElementById('loading');
 
