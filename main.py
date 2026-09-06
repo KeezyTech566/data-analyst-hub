@@ -85,19 +85,28 @@ Data Analyst Hub Team
     msg.attach(MIMEText(body, 'plain'))
 
     try:
-        if SMTP_PORT == 465:
-            with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as server:
+        port_num = int(SMTP_PORT)
+        # Port 465 uses direct SSL; Port 587 uses STARTTLS
+        if port_num == 465:
+            with smtplib.SMTP_SSL(SMTP_SERVER, port_num, timeout=10) as server:
                 server.login(SMTP_USER, SMTP_PASSWORD)
                 server.sendmail(SMTP_USER, target_email, msg.as_string())
         else:
-            with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+            with smtplib.SMTP(SMTP_SERVER, port_num, timeout=10) as server:
+                server.ehlo()
                 server.starttls()
+                server.ehlo()
                 server.login(SMTP_USER, SMTP_PASSWORD)
                 server.sendmail(SMTP_USER, target_email, msg.as_string())
+    except smtplib.SMTPAuthenticationError:
+        raise HTTPException(
+            status_code=500, 
+            detail="SMTP Authentication failed. Check your login and API key."
+        )
     except Exception as e:
         raise HTTPException(
-            status_code=500,
-            detail=f"Failed to deliver email: {str(e)}"
+            status_code=500, 
+            detail=f"Email dispatch error: {str(e)}"
         )
 
 
@@ -135,57 +144,4 @@ async def analyze_csv(file: UploadFile = File(...)):
     # Clean numeric representations (strip currency symbols and commas)
     for col in df.columns:
         if df[col].dtype == object:
-            cleaned = df[col].astype(str).str.replace(r"[\$,]", "", regex=True).str.strip()
-            converted = pd.to_numeric(cleaned, errors="coerce")
-            if converted.notnull().sum() > (0.5 * len(df)):
-                df[col] = converted
-
-    # Calculate means for numeric columns
-    numeric_df = df.select_dtypes(include=[np.number])
-    numeric_means = {}
-    if not numeric_df.empty:
-        numeric_means = {
-            col: round(float(numeric_df[col].mean()), 2)
-            for col in numeric_df.columns
-            if pd.notnull(numeric_df[col].mean())
-        }
-
-    # Top 5 rows preview
-    preview_df = df.head(5).replace({np.nan: None})
-
-    return {
-        "filename": file.filename,
-        "total_rows": int(len(df)),
-        "total_columns": int(len(df.columns)),
-        "columns": df.columns.tolist(),
-        "numeric_means": numeric_means,
-        "preview": preview_df.to_dict(orient="records"),
-    }
-
-
-# --- Password Recovery Endpoints ---
-@app.post("/api/auth/forgot-password")
-@app.post("/api/auth/forgot-password/")
-async def forgot_password(req: ForgotPasswordRequest):
-    email_clean = req.email.strip().lower()
-    if not validate_email_format(email_clean):
-        raise HTTPException(status_code=400, detail="Invalid email format.")
-
-    code = str(random.randint(100000, 999999))
-    reset_codes[email_clean] = code
-
-    send_code_to_email(email_clean, code)
-    return {"message": "Recovery code dispatched to your inbox."}
-
-
-@app.post("/api/auth/verify-reset")
-@app.post("/api/auth/verify-reset/")
-async def verify_and_reset(req: VerifyResetRequest):
-    email_clean = req.email.strip().lower()
-    stored_code = reset_codes.get(email_clean)
-
-    if not stored_code or stored_code != req.code.strip():
-        raise HTTPException(status_code=400, detail="Invalid or expired recovery code.")
-
-    del reset_codes[email_clean]
-    return {"message": "Password reset verified successfully."}
+            cleaned = df[col].astype(str).str.replace(r"[\$,]", "", regex=True).str.
