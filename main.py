@@ -4,14 +4,14 @@ import os
 import random
 import re
 import smtplib
+from email import encoders
+from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from email.mime.base import MIMEBase
-from email import encoders
 
 import numpy as np
 import pandas as pd
-from fastapi import FastAPI, File, HTTPException, UploadFile, Header, Depends
+from fastapi import Depends, FastAPI, File, Header, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -165,23 +165,70 @@ async def analyze_csv(
             continue
 
     if df is None:
-        raise HTTPException(status_code=400, detail="Unable to parse CSV. File encoding incompatible.")
+        raise HTTPException(status_code=400, detail="Unable to parse CSV. Incompatible file encoding.")
 
-    # --- Row-Level Security Filtering Logic ---
-    # Chairman: Access to full enterprise data
-    # CTO: Masks sensitive commercial rows, limits to technical and operational fields
-    # Retail Officer: Excludes high-level confidential columns (e.g. Profit, Margin, Salary)
+    # -------------------------------------------------------------
+    # Granular Multi-Tier Row-Level Security (RLS) Policy Engine
+    # -------------------------------------------------------------
     role = x_user_role.strip()
-    if role == "Retail Officer":
-        restricted_keywords = ["profit", "margin", "salary", "cost", "revenue", "ebitda"]
-        allowed_cols = [c for c in df.columns if not any(k in c.lower() for k in restricted_keywords)]
-        df = df[allowed_cols]
-    elif role == "CTO":
-        restricted_keywords = ["salary", "customer_ssn", "personal_email"]
-        allowed_cols = [c for c in df.columns if not any(k in c.lower() for k in restricted_keywords)]
+
+    # Rule definitions based on column naming patterns (case-insensitive)
+    pii_keywords = ["email", "phone", "ssn", "nin", "bvn", "address", "customer_name", "driver_name"]
+    compensation_keywords = ["salary", "bonus", "commission", "remuneration", "wage"]
+    high_finance_keywords = ["profit", "ebitda", "margin", "revenue", "supplier_cost", "net_profit"]
+    infra_tech_keywords = ["latency", "uptime", "server", "ip_address", "error_rate", "db_cluster"]
+
+    cols_lower = {c: c.lower() for c in df.columns}
+
+    if role == "Chairman":
+        # Executive Tier: Unrestricted visibility across operational, financial, and strategy data
+        pass
+
+    elif role == "Chief Financial Officer (CFO)":
+        # Financial Governance: Full visibility into revenue, margins, and compensation; filters operational tech logs
+        allowed_cols = [
+            c for c, cl in cols_lower.items() 
+            if not any(k in cl for k in infra_tech_keywords)
+        ]
         df = df[allowed_cols]
 
-    # Clean numeric representations
+    elif role == "Chief Technology Officer (CTO)":
+        # Infrastructure & Systems: Retains operational, volume, rating, and tech metrics; masks payroll and net profit
+        allowed_cols = [
+            c for c, cl in cols_lower.items() 
+            if not any(k in cl for k in compensation_keywords + ["net_profit", "ebitda"])
+        ]
+        df = df[allowed_cols]
+
+    elif role == "Chief Information Officer (CIO)":
+        # Data Architecture & Compliance: Retains operational schemas; masks personal customer/staff PII and bonuses
+        allowed_cols = [
+            c for c, cl in cols_lower.items() 
+            if not any(k in cl for k in pii_keywords + ["trader_bonus", "executive_bonus"])
+        ]
+        df = df[allowed_cols]
+
+    elif role == "Relationship Manager (RM)":
+        # Portfolio & Client Growth: Retains volume, returns, AUM, customer rating, and product sales; 
+        # completely blocks company payroll, store/fleet operational costs, and backend supplier expenses
+        restricted = compensation_keywords + ["supplier_cost", "maintenance_cost", "operational_cost", "expense_ratio"]
+        allowed_cols = [
+            c for c, cl in cols_lower.items() 
+            if not any(k in cl for k in restricted)
+        ]
+        df = df[allowed_cols]
+
+    elif role == "Retail Officer":
+        # Branch/Field Operations: Restricts executive margin metrics, supplier costs, and compensation;
+        # focuses strictly on customer ratings, sales counts, product categories, and baseline unit prices
+        restricted = high_finance_keywords + compensation_keywords + ["volatility", "aum"]
+        allowed_cols = [
+            c for c, cl in cols_lower.items() 
+            if not any(k in cl for k in restricted)
+        ]
+        df = df[allowed_cols]
+
+    # Clean numeric representations (stripping currency characters and commas)
     for col in df.columns:
         if df[col].dtype == object:
             cleaned = df[col].astype(str).str.replace(r"[\$,]", "", regex=True).str.strip()
@@ -189,6 +236,7 @@ async def analyze_csv(
             if converted.notnull().sum() > (0.5 * len(df)):
                 df[col] = converted
 
+    # Calculate aggregations only on permissible columns
     numeric_df = df.select_dtypes(include=[np.number])
     numeric_means = {}
     if not numeric_df.empty:
