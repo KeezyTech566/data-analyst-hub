@@ -32,17 +32,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# In-memory storage for active reset codes
+# --- In-Memory Reset Code Cache ---
 reset_codes = {}
 
-# SMTP Credentials from Render Environment Variables
+# --- SMTP Credentials (Configured in Render Dashboard -> Environment) ---
 SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
 SMTP_PORT = int(os.getenv("SMTP_PORT", 465))
-SMTP_USER = os.getenv("SMTP_USER", "")
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+SMTP_USER = os.getenv("SMTP_USER", "")         # Sender email address
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "") # App Password / API Key
 
 
-# Schemas using standard str (eliminates email-validator import crashes)
+# --- Request Schemas ---
 class ForgotPasswordRequest(BaseModel):
     email: str
 
@@ -53,11 +53,12 @@ class VerifyResetRequest(BaseModel):
     new_password: str
 
 
-def validate_email_format(email: str):
+def validate_email_format(email: str) -> bool:
     regex = r"^[\w\.-]+@[\w\.-]+\.\w+$"
     return bool(re.match(regex, email.strip()))
 
 
+# --- Email Dispatch Helper ---
 def send_code_to_email(target_email: str, code: str):
     if not SMTP_USER or not SMTP_PASSWORD:
         raise HTTPException(
@@ -66,9 +67,9 @@ def send_code_to_email(target_email: str, code: str):
         )
 
     msg = MIMEMultipart()
-    msg["From"] = f"Data Analyst Hub <{SMTP_USER}>"
-    msg["To"] = target_email
-    msg["Subject"] = f"{code} is your Data Analyst Hub recovery code"
+    msg['From'] = f"Data Analyst Hub <{SMTP_USER}>"
+    msg['To'] = target_email
+    msg['Subject'] = f"{code} is your Data Analyst Hub recovery code"
 
     body = f"""Hello,
 
@@ -81,32 +82,57 @@ This code is valid for 10 minutes. If you did not request this, please ignore th
 Best regards,
 Data Analyst Hub Team
 """
-    msg.attach(MIMEText(body, "plain"))
+    msg.attach(MIMEText(body, 'plain'))
 
     try:
-        with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as server:
-            server.login(SMTP_USER, SMTP_PASSWORD)
-            server.sendmail(SMTP_USER, target_email, msg.as_string())
+        if SMTP_PORT == 465:
+            with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as server:
+                server.login(SMTP_USER, SMTP_PASSWORD)
+                server.sendmail(SMTP_USER, target_email, msg.as_string())
+        else:
+            with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+                server.starttls()
+                server.login(SMTP_USER, SMTP_PASSWORD)
+                server.sendmail(SMTP_USER, target_email, msg.as_string())
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to deliver email: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to deliver email: {str(e)}"
+        )
 
 
+# --- Root & Health Check ---
 @app.get("/")
 def read_root():
     return {"status": "online", "message": "Data Analyst Hub API is running"}
 
 
+# --- CSV Profiling & Analysis Endpoint (With Multi-Encoding Detection) ---
 @app.post("/api/analyze")
 async def analyze_csv(file: UploadFile = File(...)):
-    if not file.filename.endswith(".csv"):
+    if not file.filename.lower().endswith(".csv"):
         raise HTTPException(status_code=400, detail="Only CSV files are supported.")
 
-    try:
-        contents = await file.read()
-        df = pd.read_csv(io.BytesIO(contents))
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Error parsing CSV: {str(e)}")
+    contents = await file.read()
+    df = None
+    
+    # Priority list covering standard exports, Excel UTF-16 BOM, and legacy encodings
+    encodings = ["utf-8", "utf-16", "utf-8-sig", "latin1", "cp1252"]
+    
+    for enc in encodings:
+        try:
+            df = pd.read_csv(io.BytesIO(contents), encoding=enc)
+            break
+        except (UnicodeDecodeError, pd.errors.ParserError):
+            continue
 
+    if df is None:
+        raise HTTPException(
+            status_code=400, 
+            detail="Unable to parse CSV. The file encoding is incompatible."
+        )
+
+    # Clean numeric representations (strip currency symbols and commas)
     for col in df.columns:
         if df[col].dtype == object:
             cleaned = df[col].astype(str).str.replace(r"[\$,]", "", regex=True).str.strip()
@@ -114,6 +140,7 @@ async def analyze_csv(file: UploadFile = File(...)):
             if converted.notnull().sum() > (0.5 * len(df)):
                 df[col] = converted
 
+    # Calculate means for numeric columns
     numeric_df = df.select_dtypes(include=[np.number])
     numeric_means = {}
     if not numeric_df.empty:
@@ -123,6 +150,7 @@ async def analyze_csv(file: UploadFile = File(...)):
             if pd.notnull(numeric_df[col].mean())
         }
 
+    # Top 5 rows preview
     preview_df = df.head(5).replace({np.nan: None})
 
     return {
@@ -135,7 +163,9 @@ async def analyze_csv(file: UploadFile = File(...)):
     }
 
 
+# --- Password Recovery Endpoints ---
 @app.post("/api/auth/forgot-password")
+@app.post("/api/auth/forgot-password/")
 async def forgot_password(req: ForgotPasswordRequest):
     email_clean = req.email.strip().lower()
     if not validate_email_format(email_clean):
@@ -149,6 +179,7 @@ async def forgot_password(req: ForgotPasswordRequest):
 
 
 @app.post("/api/auth/verify-reset")
+@app.post("/api/auth/verify-reset/")
 async def verify_and_reset(req: VerifyResetRequest):
     email_clean = req.email.strip().lower()
     stored_code = reset_codes.get(email_clean)
