@@ -67,6 +67,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const resetUploadBtn = document.getElementById('resetUploadBtn');
   const uploadBtn = document.getElementById('uploadBtn');
 
+  const backToLandingFromLoginBtn = document.getElementById('backToLandingFromLoginBtn');
+  const backToLandingFromRegisterBtn = document.getElementById('backToLandingFromRegisterBtn');
+
   // --- Pricing & Landing CTA Event Handlers ---
   [heroCreateAccountBtn, heroCreateAccountHeaderBtn, heroCreateAccountBottomBtn, pricingFreeBtn].forEach(btn => {
     if (btn) {
@@ -86,7 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Professional Tier Button -> Redirect to your real Paystack Payment Page
+  // Professional Tier Button -> Redirect to Paystack
   if (pricingProBtn) {
     pricingProBtn.addEventListener('click', () => {
       window.location.href = "https://paystack.shop/pay/vgxz0bm0oo";
@@ -196,7 +199,7 @@ document.addEventListener('DOMContentLoaded', () => {
     showDashboard(activeSession);
   }
 
-  // --- View Switches ---
+  // --- View Switches & Back Navigation ---
   if (switchToRegisterBtn) {
     switchToRegisterBtn.addEventListener('click', () => {
       if (loginSection) loginSection.classList.add('hidden');
@@ -208,6 +211,20 @@ document.addEventListener('DOMContentLoaded', () => {
     switchToLoginBtn.addEventListener('click', () => {
       if (registerSection) registerSection.classList.add('hidden');
       if (loginSection) loginSection.classList.remove('hidden');
+    });
+  }
+
+  if (backToLandingFromLoginBtn) {
+    backToLandingFromLoginBtn.addEventListener('click', () => {
+      if (loginSection) loginSection.classList.add('hidden');
+      if (landingSection) landingSection.classList.remove('hidden');
+    });
+  }
+
+  if (backToLandingFromRegisterBtn) {
+    backToLandingFromRegisterBtn.addEventListener('click', () => {
+      if (registerSection) registerSection.classList.add('hidden');
+      if (landingSection) landingSection.classList.remove('hidden');
     });
   }
 
