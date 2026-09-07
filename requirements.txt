@@ -11,3 +11,6 @@ xlrd
 pyarrow
 fastparquet
 google-auth
+requests
+PyJWT
+cryptography
