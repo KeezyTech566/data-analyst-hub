@@ -4,6 +4,7 @@ import os
 import random
 import re
 import smtplib
+import time
 from email import encoders
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
@@ -14,6 +15,8 @@ import pandas as pd
 import sqlalchemy.exc
 from fastapi import Depends, FastAPI, File, Header, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from google.auth.transport import requests as google_requests
+from google.oauth2 import id_token
 from pydantic import BaseModel
 from sqlalchemy import create_engine
 
@@ -50,12 +53,14 @@ app.add_middleware(
 # --- In-Memory Stores ---
 reset_codes = {}
 business_tenants = {}  # Multi-tenant directory with RLS definitions
+auth_otp_store = {}    # Secure email OTP store with TTL
 
-# --- SMTP Credentials ---
+# --- SMTP & OAuth Credentials ---
 SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
 SMTP_PORT = int(os.getenv("SMTP_PORT", 465))
 SMTP_USER = os.getenv("SMTP_USER", "")
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "487022113604-rg3ha3890bhefro90rbv37m5fo1stt0k.apps.googleusercontent.com")
 
 # --- Request Schemas ---
 class ForgotPasswordRequest(BaseModel):
@@ -90,6 +95,16 @@ class DaxEvaluateRequest(BaseModel):
     dataset_preview: list[dict]
     columns: list[str]
 
+class GoogleTokenPayload(BaseModel):
+    credential: str
+
+class SendOtpRequest(BaseModel):
+    email: str
+
+class VerifyOtpRequest(BaseModel):
+    email: str
+    code: str
+
 def validate_email_format(email: str) -> bool:
     regex = r"^[\w\.-]+@[\w\.-]+\.\w+$"
     return bool(re.match(regex, email.strip()))
@@ -102,13 +117,13 @@ def send_code_to_email(target_email: str, code: str):
     msg = MIMEMultipart()
     msg['From'] = f"Data Analyst Hub <{SMTP_USER}>"
     msg['To'] = target_email
-    msg['Subject'] = f"{code} is your Data Analyst Hub recovery code"
+    msg['Subject'] = f"{code} is your Data Analyst Hub verification code"
 
     body = f"""Hello,
 
-You requested a password reset for your Data Analyst Hub account.
+You requested authentication for your Data Analyst Hub account.
 
-Your 6-digit recovery code is: {code}
+Your 6-digit verification code is: {code}
 
 This code is valid for 10 minutes. If you did not request this, please ignore this email.
 
@@ -258,7 +273,6 @@ async def analyze_file(
                 df = df[df[filter_col].isin(unique_vals[:3])]
             elif role == "Chief Information Officer (CIO)":
                 df = df[df[filter_col].isin(unique_vals[-3:])]
-            # Chairman & CFO retain all rows
 
     # -------------------------------------------------------------
     # 2. COLUMN-LEVEL SECURITY - Attribute Masking
@@ -330,9 +344,6 @@ async def analyze_database_query(
     if df.empty:
         raise HTTPException(status_code=400, detail="Query returned zero records.")
 
-    # -------------------------------------------------------------
-    # Role Normalization Engine
-    # -------------------------------------------------------------
     role_lower = x_user_role.strip().lower()
     if "chair" in role_lower:
         role = "Chairman"
@@ -356,9 +367,6 @@ async def analyze_database_query(
 
     cols_lower = {str(c).lower(): c for c in df.columns}
 
-    # -------------------------------------------------------------
-    # 1. ROW-LEVEL SECURITY (RLS)
-    # -------------------------------------------------------------
     filter_col = None
     for c in df.columns:
         if str(c).lower() in ["store_location", "region", "desk", "operational_unit", "department"]:
@@ -377,9 +385,6 @@ async def analyze_database_query(
             elif role == "Chief Information Officer (CIO)":
                 df = df[df[filter_col].isin(unique_vals[-3:])]
 
-    # -------------------------------------------------------------
-    # 2. COLUMN-LEVEL SECURITY
-    # -------------------------------------------------------------
     if role == "Chairman":
         pass
     elif role == "Chief Financial Officer (CFO)":
@@ -395,7 +400,6 @@ async def analyze_database_query(
         restricted = high_finance_keywords + compensation_keywords + ["volatility", "aum"]
         df = df[[orig for low, orig in cols_lower.items() if not any(k in low for k in restricted)]]
 
-    # Clean numeric representations
     for col in df.columns:
         if df[col].dtype == object:
             cleaned = df[col].astype(str).str.replace(r"[\$,]", "", regex=True).str.strip()
@@ -403,7 +407,6 @@ async def analyze_database_query(
             if converted.notnull().sum() > (0.5 * len(df)):
                 df[col] = converted
 
-    # Calculate aggregations
     numeric_df = df.select_dtypes(include=[np.number])
     numeric_means = {
         str(col): round(float(numeric_df[col].mean()), 2)
@@ -421,18 +424,71 @@ async def analyze_database_query(
         "applied_role": role
     }
 
-# --- Microsoft OAuth SSO Endpoint ---
-@app.post("/api/auth/microsoft-sso")
-async def verify_microsoft_token(payload: dict):
-    user_email = payload.get("email")
-    if not user_email:
-        raise HTTPException(status_code=400, detail="Missing Azure AD token payload.")
-    
+# --- Google OAuth Token Verification Endpoint ---
+@app.post("/api/auth/google-sso")
+async def verify_google_sso(payload: GoogleTokenPayload):
+    try:
+        idinfo = id_token.verify_oauth2_token(
+            payload.credential, 
+            google_requests.Request(), 
+            GOOGLE_CLIENT_ID,
+            clock_skew_in_seconds=10
+        )
+
+        email = idinfo.get("email")
+        if not email or not idinfo.get("email_verified"):
+            raise HTTPException(status_code=400, detail="Google account email is not verified.")
+
+        username = email.split("@")[0]
+        return {
+            "verified": True,
+            "username": username,
+            "email": email,
+            "name": idinfo.get("name", username),
+            "picture": idinfo.get("picture", "")
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=f"Invalid Google token certificate: {str(e)}")
+
+# --- Email OTP Dispatch Endpoint ---
+@app.post("/api/auth/send-otp")
+async def send_login_otp(req: SendOtpRequest):
+    email_clean = req.email.strip().lower()
+    if not validate_email_format(email_clean):
+        raise HTTPException(status_code=400, detail="Invalid email format.")
+
+    code = str(random.randint(100000, 999999))
+    auth_otp_store[email_clean] = {
+        "code": code,
+        "expires_at": time.time() + 600
+    }
+
+    send_code_to_email(email_clean, code)
+    return {"message": "A 6-digit verification code has been dispatched to your Gmail."}
+
+# --- Email OTP Verification Endpoint ---
+@app.post("/api/auth/verify-otp")
+async def verify_login_otp(req: VerifyOtpRequest):
+    email_clean = req.email.strip().lower()
+    record = auth_otp_store.get(email_clean)
+
+    if not record:
+        raise HTTPException(status_code=400, detail="No active code request found for this email.")
+
+    if time.time() > record["expires_at"]:
+        del auth_otp_store[email_clean]
+        raise HTTPException(status_code=400, detail="The verification code has expired. Request a new one.")
+
+    if record["code"] != req.code.strip():
+        raise HTTPException(status_code=400, detail="Incorrect verification code.")
+
+    del auth_otp_store[email_clean]
+    username = email_clean.split("@")[0]
+
     return {
         "verified": True,
-        "username": user_email.split("@")[0],
-        "email": user_email,
-        "tenant_id": payload.get("tid", "default_org")
+        "username": username,
+        "email": email_clean
     }
 
 # --- DAX Measure Calculation Engine ---
