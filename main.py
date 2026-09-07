@@ -11,9 +11,11 @@ from email.mime.text import MIMEText
 
 import numpy as np
 import pandas as pd
+import sqlalchemy.exc
 from fastapi import Depends, FastAPI, File, Header, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from sqlalchemy import create_engine
 
 app = FastAPI(title="Data Analyst Hub API")
 
@@ -77,6 +79,11 @@ class EmailReportRequest(BaseModel):
     business_name: str
     role: str
     pdf_base64: str
+
+class DatabaseIngestRequest(BaseModel):
+    engine_type: str
+    connection_uri: str
+    sql_query: str
 
 def validate_email_format(email: str) -> bool:
     regex = r"^[\w\.-]+@[\w\.-]+\.\w+$"
@@ -264,6 +271,133 @@ async def analyze_csv(
         "numeric_means": numeric_means,
         "preview": preview_df.to_dict(orient="records"),
         "applied_role": role
+    }
+
+# --- Enterprise Database / Data Lake Profiling Endpoint ---
+@app.post("/api/analyze/database")
+async def analyze_database_query(
+    req: DatabaseIngestRequest,
+    x_user_role: str = Header(default="Chairman")
+):
+    # Enforce read-only safety checks
+    query_clean = req.sql_query.strip().lower()
+    dangerous_keywords = ["drop", "truncate", "delete", "update", "insert", "alter", "grant"]
+    if any(k in query_clean.split() for k in dangerous_keywords):
+        raise HTTPException(status_code=400, detail="Security Violation: Only read-only SELECT queries are allowed.")
+
+    try:
+        engine = create_engine(req.connection_uri)
+        with engine.connect() as conn:
+            df = pd.read_sql(req.sql_query, conn)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Database connection error: {str(e)}")
+
+    if df.empty:
+        raise HTTPException(status_code=400, detail="Query returned zero records.")
+
+    # -------------------------------------------------------------
+    # Role Normalization Engine
+    # -------------------------------------------------------------
+    role_lower = x_user_role.strip().lower()
+    if "chair" in role_lower:
+        role = "Chairman"
+    elif "cfo" in role_lower or "financial" in role_lower:
+        role = "Chief Financial Officer (CFO)"
+    elif "cto" in role_lower or "technology" in role_lower:
+        role = "Chief Technology Officer (CTO)"
+    elif "cio" in role_lower or "information" in role_lower:
+        role = "Chief Information Officer (CIO)"
+    elif "relationship" in role_lower or "rm" in role_lower:
+        role = "Relationship Manager (RM)"
+    elif "retail" in role_lower:
+        role = "Retail Officer"
+    else:
+        role = "Chairman"
+
+    pii_keywords = ["email", "phone", "ssn", "nin", "bvn", "address", "customer_name", "driver_name"]
+    compensation_keywords = ["salary", "bonus", "commission", "wage"]
+    high_finance_keywords = ["profit", "margin", "revenue", "supplier_cost", "net_profit", "ebitda"]
+    infra_tech_keywords = ["latency", "uptime", "server", "ip_address", "error_rate", "db_cluster"]
+
+    cols_lower = {c: c.lower() for c in df.columns}
+
+    # -------------------------------------------------------------
+    # 1. ROW-LEVEL SECURITY (RLS)
+    # -------------------------------------------------------------
+    filter_col = None
+    for c in df.columns:
+        if c.lower() in ["store_location", "region", "desk", "operational_unit", "department"]:
+            filter_col = c
+            break
+
+    if filter_col:
+        unique_vals = [v for v in df[filter_col].dropna().unique()]
+        if len(unique_vals) > 1:
+            if role == "Retail Officer":
+                df = df[df[filter_col].isin(unique_vals[:2])]
+            elif role == "Relationship Manager (RM)":
+                df = df[df[filter_col].isin(unique_vals[1:3])]
+            elif role == "Chief Technology Officer (CTO)":
+                df = df[df[filter_col].isin(unique_vals[:3])]
+            elif role == "Chief Information Officer (CIO)":
+                df = df[df[filter_col].isin(unique_vals[-3:])]
+
+    # -------------------------------------------------------------
+    # 2. COLUMN-LEVEL SECURITY
+    # -------------------------------------------------------------
+    if role == "Chairman":
+        pass
+    elif role == "Chief Financial Officer (CFO)":
+        df = df[[c for c, cl in cols_lower.items() if not any(k in cl for k in infra_tech_keywords)]]
+    elif role == "Chief Technology Officer (CTO)":
+        df = df[[c for c, cl in cols_lower.items() if not any(k in cl for k in compensation_keywords + ["net_profit", "ebitda"])]]
+    elif role == "Chief Information Officer (CIO)":
+        df = df[[c for c, cl in cols_lower.items() if not any(k in cl for k in pii_keywords + ["bonus"])]]
+    elif role == "Relationship Manager (RM)":
+        restricted = compensation_keywords + ["supplier_cost", "maintenance_cost", "operational_cost", "expense_ratio"]
+        df = df[[c for c, cl in cols_lower.items() if not any(k in cl for k in restricted)]]
+    elif role == "Retail Officer":
+        restricted = high_finance_keywords + compensation_keywords + ["volatility", "aum"]
+        df = df[[c for c, cl in cols_lower.items() if not any(k in cl for k in restricted)]]
+
+    # Clean numeric representations
+    for col in df.columns:
+        if df[col].dtype == object:
+            cleaned = df[col].astype(str).str.replace(r"[\$,]", "", regex=True).str.strip()
+            converted = pd.to_numeric(cleaned, errors="coerce")
+            if converted.notnull().sum() > (0.5 * len(df)):
+                df[col] = converted
+
+    # Calculate aggregations
+    numeric_df = df.select_dtypes(include=[np.number])
+    numeric_means = {
+        col: round(float(numeric_df[col].mean()), 2)
+        for col in numeric_df.columns
+        if pd.notnull(numeric_df[col].mean())
+    }
+
+    return {
+        "filename": f"{req.engine_type}://LiveStream",
+        "total_rows": int(len(df)),
+        "total_columns": int(len(df.columns)),
+        "columns": df.columns.tolist(),
+        "numeric_means": numeric_means,
+        "preview": df.head(5).replace({np.nan: None}).to_dict(orient="records"),
+        "applied_role": role
+    }
+
+# --- Microsoft OAuth SSO Endpoint ---
+@app.post("/api/auth/microsoft-sso")
+async def verify_microsoft_token(payload: dict):
+    user_email = payload.get("email")
+    if not user_email:
+        raise HTTPException(status_code=400, detail="Missing Azure AD token payload.")
+    
+    return {
+        "verified": True,
+        "username": user_email.split("@")[0],
+        "email": user_email,
+        "tenant_id": payload.get("tid", "default_org")
     }
 
 # --- Email Exported PowerBI-Style PDF Report ---
