@@ -166,7 +166,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const msalConfig = {
     auth: {
       clientId: MS_CLIENT_ID,
-      authority: "https://login.microsoftonline.com/common", // Supports corporate Azure AD + personal Outlook/Hotmail
+      authority: "https://login.microsoftonline.com/common",
       redirectUri: window.location.origin
     },
     cache: {
@@ -190,7 +190,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const users = getRegisteredUsers();
     let existingUser = users.find(u => u.email.toLowerCase() === cleanEmail);
 
-    // If account doesn't exist yet, automatically provision it (Sign Up)
     if (!existingUser) {
       existingUser = {
         email: cleanEmail,
@@ -201,7 +200,6 @@ document.addEventListener('DOMContentLoaded', () => {
       saveRegisteredUser(existingUser);
     }
 
-    // Set active session & reveal dashboard
     sessionStorage.setItem('currentUser', existingUser.username);
     if (loginSection) loginSection.classList.add('hidden');
     if (registerSection) registerSection.classList.add('hidden');
@@ -212,7 +210,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- Attach Click Listener to All Microsoft SSO Buttons ---
   document.querySelectorAll('.ms-auth-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
-      // 1. Live Azure Active Directory / Microsoft Account Flow
       if (msalApp) {
         try {
           btn.disabled = true;
@@ -231,9 +228,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } finally {
           btn.disabled = false;
         }
-      } 
-      // 2. Local Fallback Simulation (if Azure Client ID hasn't been set yet)
-      else {
+      } else {
         const msAccountInput = prompt(
           "Microsoft Single Sign-On (Simulation Mode):\nEnter your Microsoft Work, School, or Personal email:", 
           "analyst@company.onmicrosoft.com"
@@ -521,6 +516,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (logoutBtn) {
     logoutBtn.addEventListener('click', () => {
       sessionStorage.removeItem('currentUser');
+      sessionStorage.removeItem('activeTenant');
       activeCachedFile = null;
       mainDashboard.classList.add('hidden');
       landingSection.classList.remove('hidden');
@@ -528,7 +524,10 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function showDashboard(username) {
-    if (loggedInUserDisplay) loggedInUserDisplay.textContent = username;
+    const activeTenant = sessionStorage.getItem('activeTenant');
+    if (loggedInUserDisplay) {
+      loggedInUserDisplay.textContent = activeTenant ? `${username} (${activeTenant})` : username;
+    }
     if (landingSection) landingSection.classList.add('hidden');
     if (loginSection) loginSection.classList.add('hidden');
     if (registerSection) registerSection.classList.add('hidden');
@@ -581,7 +580,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // --- Central CSV Analysis Engine ---
+  // --- Central Analysis Engine ---
   async function processCSVAnalysis(fileObj) {
     const loader = document.getElementById('loading');
     if (loader) loader.classList.remove('hidden');
@@ -605,7 +604,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const data = await res.json();
 
-      // Explicitly mirror the verified backend applied role
       if (fileNameDisplay) {
         fileNameDisplay.textContent = `${fileObj.name} (View: ${data.applied_role || currentRole})`;
       }
