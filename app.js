@@ -13,9 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   // Explicit Backend Base & Endpoint Configuration
-  const API_BASE = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
-    ? "http://127.0.0.1:8000"
-    : "https://data-analyst-hub.onrender.com";
+  const API_BASE = "https://data-analyst-hub.onrender.com";
 
   const BACKEND_URL = `${API_BASE}/api/analyze`;
 
@@ -933,11 +931,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const element = document.getElementById('metricsSection');
       const opt = {
-        margin:       0.3,
-        filename:     'PowerBI_Executive_Dashboard.pdf',
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true },
-        jsPDF:        { unit: 'in', format: 'letter', orientation: 'landscape' }
+        margin:        0.3,
+        filename:      'PowerBI_Executive_Dashboard.pdf',
+        image:         { type: 'jpeg', quality: 0.98 },
+        html2canvas:   { scale: 2, useCORS: true },
+        jsPDF:         { unit: 'in', format: 'letter', orientation: 'landscape' }
       };
 
       try {
