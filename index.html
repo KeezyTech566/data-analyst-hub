@@ -160,7 +160,7 @@
       </form>
 
       <div class="auth-switch">
-        <p>Already have an account? <button type="button" id="switchToLoginBtn" class="link-btn highlight">Sign In</button></p>
+        <p>Don't have an account? <button type="button" id="switchToLoginBtn" class="link-btn highlight">Sign In</button></p>
       </div>
     </div>
   </div>
@@ -352,10 +352,34 @@
         </div>
       </div>
 
-      <!-- KPI Summary Cards -->
-      <div class="kpi-grid">
-        <div class="card"><h3>Total Rows</h3><p id="rowCount">-</p></div>
-        <div class="card"><h3>Total Columns</h3><p id="colCount">-</p></div>
+      <!-- PowerBI Formula / Measure Authoring Bar -->
+      <div class="card" style="margin-bottom: 1.5rem; background: #0f172a; border: 1px solid #334155; padding: 1.25rem;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span style="background: #38bdf8; color: #0f172a; font-weight: 800; font-size: 0.75rem; padding: 0.2rem 0.5rem; border-radius: 4px;">fx</span>
+            <strong style="color: #f8fafc; font-size: 0.95rem;">New DAX Measure Engine</strong>
+          </div>
+          <span style="font-size: 0.75rem; color: #94a3b8;">Syntax: [MeasureName] = FUNCTION([Column], [Filter/Divisor])</span>
+        </div>
+
+        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+          <input type="text" id="daxInput" placeholder="Total Revenue = SUM([Revenue])  or  High Val Ratio = DIVIDE(CALCULATE(SUM([Revenue]), [Region] == 'North'), SUM([Revenue]))" style="flex: 1; min-width: 320px; background: #1e293b; color: #38bdf8; font-family: 'Courier New', monospace; font-size: 0.88rem; border: 1px solid #334155; padding: 0.65rem 0.85rem; border-radius: 6px;">
+          <button type="button" id="evaluateDaxBtn" class="btn-primary" style="padding: 0.65rem 1.25rem; font-weight: 600;">Run Measure</button>
+        </div>
+        <p id="daxOutputMsg" class="hidden" style="font-size: 0.8rem; margin-top: 0.5rem; margin-bottom: 0;"></p>
+      </div>
+
+      <!-- PowerBI Multi-Card Visual Container -->
+      <div id="dynamicCardGrid" class="kpi-grid" style="margin-bottom: 1.5rem;">
+        <div class="card">
+          <h3>Total Rows</h3>
+          <p id="rowCount">-</p>
+        </div>
+        <div class="card">
+          <h3>Total Columns</h3>
+          <p id="colCount">-</p>
+        </div>
+        <!-- Evaluated DAX measure cards append dynamically here -->
       </div>
 
       <!-- Comprehensive Visualizations (Placed Above Table) -->
