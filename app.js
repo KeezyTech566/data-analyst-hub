@@ -158,18 +158,91 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // --- Microsoft Account SSO Hooks ---
+  // =========================================================================
+  // Microsoft Identity Platform SSO Configuration (MSAL v2 - OAuth PKCE)
+  // =========================================================================
+  const MS_CLIENT_ID = "YOUR_MICROSOFT_AZURE_CLIENT_ID"; // e.g. "00000000-0000-0000-0000-000000000000"
+
+  const msalConfig = {
+    auth: {
+      clientId: MS_CLIENT_ID,
+      authority: "https://login.microsoftonline.com/common", // Supports corporate Azure AD + personal Outlook/Hotmail
+      redirectUri: window.location.origin
+    },
+    cache: {
+      cacheLocation: "localStorage",
+      storeAuthStateInCookie: false
+    }
+  };
+
+  let msalApp = null;
+  if (window.msal && MS_CLIENT_ID !== "YOUR_MICROSOFT_AZURE_CLIENT_ID") {
+    msalApp = new msal.PublicClientApplication(msalConfig);
+  }
+
+  // --- Central Handler: Register or Sign In with Microsoft Profile ---
+  function authenticateMicrosoftUser(email, displayName) {
+    const cleanEmail = email.trim().toLowerCase();
+    const generatedUsername = displayName 
+      ? displayName.toLowerCase().replace(/\s+/g, '_') 
+      : cleanEmail.split('@')[0];
+
+    const users = getRegisteredUsers();
+    let existingUser = users.find(u => u.email.toLowerCase() === cleanEmail);
+
+    // If account doesn't exist yet, automatically provision it (Sign Up)
+    if (!existingUser) {
+      existingUser = {
+        email: cleanEmail,
+        username: generatedUsername,
+        auth_provider: "microsoft",
+        created_at: new Date().toISOString()
+      };
+      saveRegisteredUser(existingUser);
+    }
+
+    // Set active session & reveal dashboard
+    sessionStorage.setItem('currentUser', existingUser.username);
+    if (loginSection) loginSection.classList.add('hidden');
+    if (registerSection) registerSection.classList.add('hidden');
+    if (landingSection) landingSection.classList.add('hidden');
+    showDashboard(existingUser.username);
+  }
+
+  // --- Attach Click Listener to All Microsoft SSO Buttons ---
   document.querySelectorAll('.ms-auth-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const msMockEmail = prompt("Enter your Microsoft Work/School Account email:", "analyst@enterprise.onmicrosoft.com");
-      if (msMockEmail) {
-        const username = msMockEmail.split('@')[0];
-        sessionStorage.setItem('currentUser', username);
-        if (loggedInUserDisplay) loggedInUserDisplay.textContent = username;
-        if (landingSection) landingSection.classList.add('hidden');
-        if (loginSection) loginSection.classList.add('hidden');
-        if (registerSection) registerSection.classList.add('hidden');
-        if (mainDashboard) mainDashboard.classList.remove('hidden');
+    btn.addEventListener('click', async () => {
+      // 1. Live Azure Active Directory / Microsoft Account Flow
+      if (msalApp) {
+        try {
+          btn.disabled = true;
+          const loginRequest = {
+            scopes: ["user.read", "openid", "profile", "email"]
+          };
+          const authResult = await msalApp.loginPopup(loginRequest);
+          const email = authResult.account.username;
+          const name = authResult.account.name;
+
+          authenticateMicrosoftUser(email, name);
+        } catch (err) {
+          if (err.name !== "BrowserAuthError" || !err.message.includes("user_cancelled")) {
+            alert(`Microsoft Authentication Failed: ${err.message}`);
+          }
+        } finally {
+          btn.disabled = false;
+        }
+      } 
+      // 2. Local Fallback Simulation (if Azure Client ID hasn't been set yet)
+      else {
+        const msAccountInput = prompt(
+          "Microsoft Single Sign-On (Simulation Mode):\nEnter your Microsoft Work, School, or Personal email:", 
+          "analyst@company.onmicrosoft.com"
+        );
+        if (msAccountInput && msAccountInput.includes("@")) {
+          authenticateMicrosoftUser(msAccountInput, msAccountInput.split("@")[0]);
+        } else if (msAccountInput) {
+          alert("Please enter a valid email address.");
+        }
       }
     });
   });
@@ -554,7 +627,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (uploadBtn) {
     uploadBtn.addEventListener('click', () => {
       if (!fileInput.files[0]) {
-        alert("Please select a CSV file first.");
+        alert("Please select a valid dataset file (CSV, XLSX, XLS, PARQUET, or JSON).");
         return;
       }
       activeCachedFile = fileInput.files[0];
