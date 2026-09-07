@@ -124,7 +124,7 @@ def send_code_to_email(target_email: str, code: str):
                 "Content-Type": "application/json"
             },
             json={
-                "from": "Data Analyst Hub <onboarding@resend.dev>",
+                "from": "Data Analyst Hub <support@dataanalysthub.com.ng>",
                 "to": [target_email],
                 "subject": f"{code} is your Data Analyst Hub verification code",
                 "html": f"<p>Your 6-digit verification code is: <strong>{code}</strong></p><p>This code is valid for 10 minutes.</p>"
@@ -630,7 +630,7 @@ async def email_dashboard_report(req: EmailReportRequest):
                 "Content-Type": "application/json"
             },
             json={
-                "from": "Data Analyst Hub Analytics <onboarding@resend.dev>",
+                "from": "Data Analyst Hub <support@dataanalysthub.com.ng>",
                 "to": [req.target_email],
                 "subject": f"{req.business_name} - Visual Dashboard Report ({req.role})",
                 "html": f"<p>Attached is your visual analytics report from Data Analyst Hub for business <strong>{req.business_name}</strong> under role <strong>{req.role}</strong>.</p>"
