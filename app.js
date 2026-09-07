@@ -86,10 +86,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Professional Tier Button -> Redirect to Checkout / Payment Gateway (e.g., Paystack)
+  // Professional Tier Button -> Redirect to your real Paystack Payment Page
   if (pricingProBtn) {
     pricingProBtn.addEventListener('click', () => {
-      window.location.href = "https://paystack.com/pay/data-analyst-hub-pro";
+      window.location.href = "https://paystack.shop/pay/vgxz0bm0oo";
     });
   }
 
