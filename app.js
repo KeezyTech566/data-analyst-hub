@@ -23,6 +23,12 @@ document.addEventListener('DOMContentLoaded', () => {
   let activeCachedFile = null;
   let currentRole = "Chairman";
 
+  // Active dataset context for DAX measure calculations
+  let activeDatasetContext = {
+    columns: [],
+    preview: []
+  };
+
   const userRoleSelect = document.getElementById('userRoleSelect');
   if (userRoleSelect) {
     userRoleSelect.addEventListener('change', (e) => {
@@ -144,6 +150,10 @@ document.addEventListener('DOMContentLoaded', () => {
           fileNameDisplay.textContent = `${engine.toUpperCase()} Live Query (View: ${data.applied_role || currentRole})`;
         }
 
+        // Cache dataset context for DAX measures
+        activeDatasetContext.columns = data.columns || [];
+        activeDatasetContext.preview = data.preview || [];
+
         renderKPIs(data);
         renderAllVisualizations(data.numeric_means);
         renderTable(data.columns, data.preview);
@@ -158,10 +168,76 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // --- DAX Measure Calculation & Dynamic Card Generation ---
+  const evaluateDaxBtn = document.getElementById('evaluateDaxBtn');
+  const daxInput = document.getElementById('daxInput');
+  const daxOutputMsg = document.getElementById('daxOutputMsg');
+  const dynamicCardGrid = document.getElementById('dynamicCardGrid');
+
+  if (evaluateDaxBtn) {
+    evaluateDaxBtn.addEventListener('click', async () => {
+      const formula = daxInput.value.trim();
+      if (!formula) {
+        alert("Please enter a DAX formula (e.g., Total Sales = SUM([Revenue]))");
+        return;
+      }
+
+      if (activeDatasetContext.preview.length === 0) {
+        alert("Please analyze a dataset or connect a database first before creating measures.");
+        return;
+      }
+
+      evaluateDaxBtn.disabled = true;
+      evaluateDaxBtn.textContent = "Calculating...";
+      daxOutputMsg.classList.add('hidden');
+
+      try {
+        const res = await fetch(`${API_BASE}/api/measures/evaluate`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            formula: formula,
+            dataset_preview: activeDatasetContext.preview,
+            columns: activeDatasetContext.columns
+          })
+        });
+
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.detail || "DAX computation failed.");
+
+        // Create and append a new visual card
+        const newCard = document.createElement('div');
+        newCard.className = 'card';
+        newCard.style.border = '1px solid #38bdf8';
+        newCard.innerHTML = `
+          <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <h3 style="color: #94a3b8; font-size: 0.85rem; margin-bottom: 0.35rem;">${result.name}</h3>
+            <span style="font-size: 0.65rem; color: #38bdf8; font-family: monospace;">DAX</span>
+          </div>
+          <p style="font-size: 1.6rem; font-weight: 700; color: #38bdf8; margin: 0.2rem 0;">${result.value}</p>
+          <span style="font-size: 0.7rem; color: #64748b; font-family: monospace; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${result.formula}">fx: ${result.formula}</span>
+        `;
+        dynamicCardGrid.appendChild(newCard);
+
+        daxOutputMsg.textContent = `Measure "${result.name}" evaluated successfully and added as a visual card!`;
+        daxOutputMsg.style.color = "#34d399";
+        daxOutputMsg.classList.remove('hidden');
+        daxInput.value = '';
+      } catch (err) {
+        daxOutputMsg.textContent = err.message;
+        daxOutputMsg.style.color = "#f87171";
+        daxOutputMsg.classList.remove('hidden');
+      } finally {
+        evaluateDaxBtn.disabled = false;
+        evaluateDaxBtn.textContent = "Run Measure";
+      }
+    });
+  }
+
   // =========================================================================
   // Microsoft Identity Platform SSO Configuration (MSAL v2 - OAuth PKCE)
   // =========================================================================
-  const MS_CLIENT_ID = "YOUR_MICROSOFT_AZURE_CLIENT_ID"; // e.g. "00000000-0000-0000-0000-000000000000"
+  const MS_CLIENT_ID = "YOUR_MICROSOFT_AZURE_CLIENT_ID";
 
   const msalConfig = {
     auth: {
@@ -518,6 +594,7 @@ document.addEventListener('DOMContentLoaded', () => {
       sessionStorage.removeItem('currentUser');
       sessionStorage.removeItem('activeTenant');
       activeCachedFile = null;
+      activeDatasetContext = { columns: [], preview: [] };
       mainDashboard.classList.add('hidden');
       landingSection.classList.remove('hidden');
     });
@@ -608,6 +685,10 @@ document.addEventListener('DOMContentLoaded', () => {
         fileNameDisplay.textContent = `${fileObj.name} (View: ${data.applied_role || currentRole})`;
       }
 
+      // Cache dataset context for DAX measures
+      activeDatasetContext.columns = data.columns || [];
+      activeDatasetContext.preview = data.preview || [];
+
       renderKPIs(data);
       renderAllVisualizations(data.numeric_means);
       renderTable(data.columns, data.preview);
@@ -637,6 +718,7 @@ document.addEventListener('DOMContentLoaded', () => {
     resetUploadBtn.addEventListener('click', () => {
       fileInput.value = '';
       activeCachedFile = null;
+      activeDatasetContext = { columns: [], preview: [] };
       metricsSection.classList.add('hidden');
       uploadSection.classList.remove('hidden');
     });
