@@ -281,24 +281,42 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Initialize Google One Tap / Sign-In Client
+  // Initialize Google Sign-In Client
   window.onload = function () {
     if (window.google && GOOGLE_CLIENT_ID !== "PASTE_YOUR_GOOGLE_CLIENT_ID_HERE.apps.googleusercontent.com") {
-      google.accounts.id.initialize({
-        client_id: GOOGLE_CLIENT_ID,
-        callback: handleGoogleCredentialResponse
-      });
+      try {
+        google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: handleGoogleCredentialResponse,
+          auto_select: false,
+          cancel_on_tap_outside: true
+        });
+      } catch (e) {
+        console.error("GIS Initialization error:", e);
+      }
     }
   };
 
-  // Attach Google Sign-in Trigger
+  // Trigger Google Prompt securely on button click
   document.querySelectorAll('.google-auth-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       if (!window.google || GOOGLE_CLIENT_ID === "PASTE_YOUR_GOOGLE_CLIENT_ID_HERE.apps.googleusercontent.com") {
-        alert("Google Client ID is not configured. Please enter your Google Cloud OAuth Client ID.");
+        alert("Google Client ID is not configured properly in app.js.");
         return;
       }
-      google.accounts.id.prompt(); // Launches Google popup account selector & Authenticator prompt
+      try {
+        google.accounts.id.prompt((notification) => {
+          if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+            // Fallback to standard render or explicit popup if One Tap is blocked by browser settings
+            google.accounts.id.renderButton(
+              document.querySelector('.google-auth-btn').parentNode,
+              { theme: 'outline', size: 'large', width: '100%' }
+            );
+          }
+        });
+      } catch (err) {
+        alert("Google Auth Popup error: " + err.message);
+      }
     });
   });
 
