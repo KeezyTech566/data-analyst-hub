@@ -6,6 +6,7 @@
   <title>Data Analyst Hub</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.3/lib/msal-browser.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
@@ -30,7 +31,7 @@
         </svg>
       </div>
       <h1>Enterprise Data Profiling & Analytics</h1>
-      <p class="hero-subtitle">Transform raw tabular CSV datasets into actionable metrics, distribution profiles, and multi-dimensional visual summaries instantly.</p>
+      <p class="hero-subtitle">Transform raw tabular datasets into actionable metrics, distribution profiles, and multi-dimensional visual summaries instantly.</p>
       <div class="feature-pills">
         <span>⚡ Real-Time Statistical Profiling</span>
         <span>📊 10+ Enterprise Visualizations</span>
@@ -288,19 +289,19 @@
         </div>
       </div>
       <h1>Data Analyst Portal</h1>
-      <p id="portalSubtitle">Upload a CSV dataset to execute automated backend profiling.</p>
+      <p id="portalSubtitle">Upload a tabular dataset or connect to an operational database for automated profiling.</p>
     </header>
 
-    <!-- Upload Card -->
+    <!-- Ingestion Card -->
     <section id="uploadSection" class="upload-card">
       <div style="display: flex; gap: 0.5rem; border-bottom: 1px solid #334155; margin-bottom: 1.5rem;">
-        <button id="tabCSV" class="btn-primary" style="font-size: 0.85rem;">📁 Flat CSV / Parquet</button>
+        <button id="tabCSV" class="btn-primary" style="font-size: 0.85rem;">📁 Flat Tabular File (CSV, Excel, Parquet)</button>
         <button id="tabDB" class="btn-secondary" style="font-size: 0.85rem;">🗄️ SQL / Postgres / Apache Ingestion</button>
       </div>
 
-      <!-- CSV File Mode -->
+      <!-- Tabular File Mode -->
       <div id="csvIngestBox">
-        <input type="file" id="csvFileInput" accept=".csv,.parquet">
+        <input type="file" id="csvFileInput" accept=".csv,.xlsx,.xls,.parquet,.json,.tsv,.txt">
         <button id="uploadBtn" class="btn-primary">Analyze Dataset</button>
       </div>
 
