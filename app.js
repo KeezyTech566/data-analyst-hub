@@ -235,88 +235,183 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // =========================================================================
-  // Microsoft Identity Platform SSO Configuration (MSAL v2 - OAuth PKCE)
+  // Google Identity Services (GIS) & Inbox OTP Engine
   // =========================================================================
-  const MS_CLIENT_ID = "YOUR_MICROSOFT_AZURE_CLIENT_ID";
+  const GOOGLE_CLIENT_ID = "487022113604-rg3ha3890bhefro90rbv37m5fo1stt0k.apps.googleusercontent.com";
 
-  const msalConfig = {
-    auth: {
-      clientId: MS_CLIENT_ID,
-      authority: "https://login.microsoftonline.com/common",
-      redirectUri: window.location.origin
-    },
-    cache: {
-      cacheLocation: "localStorage",
-      storeAuthStateInCookie: false
-    }
-  };
-
-  let msalApp = null;
-  if (window.msal && MS_CLIENT_ID !== "YOUR_MICROSOFT_AZURE_CLIENT_ID") {
-    msalApp = new msal.PublicClientApplication(msalConfig);
-  }
-
-  // --- Central Handler: Register or Sign In with Microsoft Profile ---
-  function authenticateMicrosoftUser(email, displayName) {
-    const cleanEmail = email.trim().toLowerCase();
-    const generatedUsername = displayName 
-      ? displayName.toLowerCase().replace(/\s+/g, '_') 
-      : cleanEmail.split('@')[0];
-
+  // Process verified user session
+  function completeAuthSession(username, email, provider) {
     const users = getRegisteredUsers();
-    let existingUser = users.find(u => u.email.toLowerCase() === cleanEmail);
+    let existingUser = users.find(u => u.email.toLowerCase() === email.toLowerCase());
 
     if (!existingUser) {
       existingUser = {
-        email: cleanEmail,
-        username: generatedUsername,
-        auth_provider: "microsoft",
+        email: email.toLowerCase(),
+        username: username,
+        auth_provider: provider,
         created_at: new Date().toISOString()
       };
       saveRegisteredUser(existingUser);
     }
 
     sessionStorage.setItem('currentUser', existingUser.username);
+    sessionStorage.setItem('authProvider', provider);
+
     if (loginSection) loginSection.classList.add('hidden');
     if (registerSection) registerSection.classList.add('hidden');
     if (landingSection) landingSection.classList.add('hidden');
     showDashboard(existingUser.username);
   }
 
-  // --- Attach Click Listener to All Microsoft SSO Buttons ---
-  document.querySelectorAll('.ms-auth-btn').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      if (msalApp) {
-        try {
-          btn.disabled = true;
-          const loginRequest = {
-            scopes: ["user.read", "openid", "profile", "email"]
-          };
-          const authResult = await msalApp.loginPopup(loginRequest);
-          const email = authResult.account.username;
-          const name = authResult.account.name;
+  // --- Google OAuth Handshake ---
+  async function handleGoogleCredentialResponse(response) {
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/google-sso`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ credential: response.credential })
+      });
 
-          authenticateMicrosoftUser(email, name);
-        } catch (err) {
-          if (err.name !== "BrowserAuthError" || !err.message.includes("user_cancelled")) {
-            alert(`Microsoft Authentication Failed: ${err.message}`);
-          }
-        } finally {
-          btn.disabled = false;
-        }
-      } else {
-        const msAccountInput = prompt(
-          "Microsoft Single Sign-On (Simulation Mode):\nEnter your Microsoft Work, School, or Personal email:", 
-          "analyst@company.onmicrosoft.com"
-        );
-        if (msAccountInput && msAccountInput.includes("@")) {
-          authenticateMicrosoftUser(msAccountInput, msAccountInput.split("@")[0]);
-        } else if (msAccountInput) {
-          alert("Please enter a valid email address.");
-        }
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Google authentication failed.");
+
+      completeAuthSession(data.username, data.email, "google");
+    } catch (err) {
+      alert(`Google Security Verification Error: ${err.message}`);
+    }
+  }
+
+  // Initialize Google One Tap / Sign-In Client
+  window.onload = function () {
+    if (window.google && GOOGLE_CLIENT_ID !== "PASTE_YOUR_GOOGLE_CLIENT_ID_HERE.apps.googleusercontent.com") {
+      google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: handleGoogleCredentialResponse
+      });
+    }
+  };
+
+  // Attach Google Sign-in Trigger
+  document.querySelectorAll('.google-auth-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (!window.google || GOOGLE_CLIENT_ID === "PASTE_YOUR_GOOGLE_CLIENT_ID_HERE.apps.googleusercontent.com") {
+        alert("Google Client ID is not configured. Please enter your Google Cloud OAuth Client ID.");
+        return;
+      }
+      google.accounts.id.prompt(); // Launches Google popup account selector & Authenticator prompt
+    });
+  });
+
+  // --- Email OTP Handlers ---
+  const otpModal = document.getElementById('otpModal');
+  const otpStep1 = document.getElementById('otpStep1');
+  const otpStep2 = document.getElementById('otpStep2');
+  const otpEmailInput = document.getElementById('otpEmailInput');
+  const otpCodeInput = document.getElementById('otpCodeInput');
+  const sendOtpBtn = document.getElementById('sendOtpBtn');
+  const verifyOtpBtn = document.getElementById('verifyOtpBtn');
+  const closeOtpBtn = document.getElementById('closeOtpBtn');
+  const backOtpBtn = document.getElementById('backOtpBtn');
+  const otpError = document.getElementById('otpError');
+  const otpStep2Error = document.getElementById('otpStep2Error');
+
+  let activeOtpEmail = "";
+
+  document.querySelectorAll('.gmail-otp-link').forEach(link => {
+    link.addEventListener('click', () => {
+      if (otpModal) {
+        otpModal.classList.remove('hidden');
+        otpStep1.classList.remove('hidden');
+        otpStep2.classList.add('hidden');
+        otpError.classList.add('hidden');
+        otpEmailInput.value = "";
       }
     });
   });
+
+  if (closeOtpBtn) {
+    closeOtpBtn.addEventListener('click', () => otpModal.classList.add('hidden'));
+  }
+
+  if (backOtpBtn) {
+    backOtpBtn.addEventListener('click', () => {
+      otpStep2.classList.add('hidden');
+      otpStep1.classList.remove('hidden');
+    });
+  }
+
+  if (sendOtpBtn) {
+    sendOtpBtn.addEventListener('click', async () => {
+      const email = otpEmailInput.value.trim().toLowerCase();
+      otpError.classList.add('hidden');
+
+      if (!email || !email.includes('@')) {
+        otpError.textContent = "Please enter a valid email address.";
+        otpError.classList.remove('hidden');
+        return;
+      }
+
+      sendOtpBtn.disabled = true;
+      sendOtpBtn.textContent = "Transmitting code...";
+
+      try {
+        const res = await fetch(`${API_BASE}/api/auth/send-otp`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: email })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Failed to dispatch verification email.");
+
+        activeOtpEmail = email;
+        otpStep1.classList.add('hidden');
+        otpStep2.classList.remove('hidden');
+      } catch (err) {
+        otpError.textContent = err.message;
+        otpError.classList.remove('hidden');
+      } finally {
+        sendOtpBtn.disabled = false;
+        sendOtpBtn.textContent = "Send Code";
+      }
+    });
+  }
+
+  if (verifyOtpBtn) {
+    verifyOtpBtn.addEventListener('click', async () => {
+      const code = otpCodeInput.value.trim();
+      otpStep2Error.classList.add('hidden');
+
+      if (code.length !== 6) {
+        otpStep2Error.textContent = "Please enter the complete 6-digit code.";
+        otpStep2Error.classList.remove('hidden');
+        return;
+      }
+
+      verifyOtpBtn.disabled = true;
+      verifyOtpBtn.textContent = "Authenticating...";
+
+      try {
+        const res = await fetch(`${API_BASE}/api/auth/verify-otp`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: activeOtpEmail, code: code })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Verification failed.");
+
+        otpModal.classList.add('hidden');
+        completeAuthSession(data.username, data.email, "email_otp");
+      } catch (err) {
+        otpStep2Error.textContent = err.message;
+        otpStep2Error.classList.remove('hidden');
+      } finally {
+        verifyOtpBtn.disabled = false;
+        verifyOtpBtn.textContent = "Verify & Enter";
+      }
+    });
+  }
 
   let activeRecovery = { email: null };
 
@@ -618,7 +713,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const submitOnboardBtn = document.getElementById('submitOnboardBtn');
 
   if (openOnboardBtn && onboardModal) {
-    openOnboardBtn.addEventListener('click', () => onboardModal.classList.remove('hidden'));
+    openOnboardBtn.addEventListener('click', () => onboardModal.classList.add('hidden'));
     closeOnboardBtn.addEventListener('click', () => onboardModal.classList.add('hidden'));
 
     submitOnboardBtn.addEventListener('click', async () => {
