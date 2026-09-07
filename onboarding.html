@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tenant Onboarding - Data Analyst Hub</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .onboard-page {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle at 50% 20%, #1e293b, #0b0f19);
+      padding: 2rem 1rem;
+    }
+    .onboard-card {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 2.5rem;
+      width: 100%;
+      max-width: 650px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="onboard-page">
+    <div class="onboard-card">
+      <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem;">
+        <svg class="brand-logo-small" viewBox="0 0 100 100" fill="none" style="width: 36px; height: 36px;">
+          <rect width="100" height="100" rx="20" fill="#0f172a" stroke="#334155" stroke-width="3"/>
+          <rect x="22" y="52" width="10" height="26" rx="3" fill="#38bdf8" />
+          <rect x="38" y="38" width="10" height="40" rx="3" fill="#818cf8" />
+          <rect x="54" y="26" width="10" height="52" rx="3" fill="#38bdf8" />
+        </svg>
+        <h2 style="font-size: 1.4rem; color: #f8fafc; margin: 0;">Enterprise Tenant Setup</h2>
+      </div>
+      <p style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 2rem;">Provision your corporate organization workspace and define hierarchy security credentials.</p>
+
+      <form id="standaloneOnboardForm">
+        <div class="grid-2">
+          <div class="input-group">
+            <label for="bizName">Organization Name</label>
+            <input type="text" id="bizName" placeholder="e.g. Apex Global Logistics" required>
+          </div>
+          <div class="input-group">
+            <label for="bizEmail">Corporate Domain Email</label>
+            <input type="email" id="bizEmail" placeholder="admin@apexlogistics.com" required>
+          </div>
+        </div>
+
+        <div class="input-group" style="margin-top: 1rem;">
+          <label for="bizIndustry">Industry Vector</label>
+          <select id="bizIndustry" style="width: 100%; background: #1e293b; border: 1px solid #334155; border-radius: 6px; padding: 0.6rem; color: #fff;">
+            <option value="Financial Services & Banking">Financial Services & Banking</option>
+            <option value="Supply Chain & Logistics">Supply Chain & Logistics</option>
+            <option value="Retail & E-commerce">Retail & E-commerce</option>
+            <option value="Healthcare & Life Sciences">Healthcare & Life Sciences</option>
+          </select>
+        </div>
+
+        <div style="border-top: 1px solid #334155; margin-top: 1.5rem; padding-top: 1rem;">
+          <p style="font-size: 0.85rem; font-weight: 600; color: #38bdf8; margin-bottom: 0.75rem;">Role-Level Security (RLS) Secret Keys</p>
+          <div class="grid-2">
+            <div class="input-group">
+              <label>Chairman Access Key</label>
+              <input type="password" id="keyChairman" placeholder="Board-level key" required>
+            </div>
+            <div class="input-group">
+              <label>CTO / Infra Key</label>
+              <input type="password" id="keyCTO" placeholder="Technical systems key" required>
+            </div>
+          </div>
+          <div class="input-group" style="margin-top: 1rem;">
+            <label>Field / Retail Officer Key</label>
+            <input type="password" id="keyRetail" placeholder="Branch-level key" required>
+          </div>
+        </div>
+
+        <div style="margin-top: 2rem; display: flex; gap: 1rem;">
+          <button type="submit" class="btn-primary full-width" id="submitBtn">Deploy Tenant Workspace</button>
+          <a href="index.html" class="btn-secondary full-width" style="text-align: center; text-decoration: none; padding-top: 0.75rem;">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+      ? "http://127.0.0.1:8000"
+      : "https://data-analyst-hub.onrender.com";
+
+    document.getElementById('standaloneOnboardForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('submitBtn');
+      btn.disabled = true;
+      btn.textContent = "Deploying Cluster...";
+
+      try {
+        const res = await fetch(`${API_BASE}/api/tenant/onboard`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            business_name: document.getElementById('bizName').value.trim(),
+            admin_email: document.getElementById('bizEmail').value.trim(),
+            industry: document.getElementById('bizIndustry').value,
+            chairman_key: document.getElementById('keyChairman').value,
+            cto_key: document.getElementById('keyCTO').value,
+            retail_officer_key: document.getElementById('keyRetail').value
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Deployment failed.");
+        alert("Tenant deployed! Redirecting to analytics dashboard...");
+        window.location.href = "index.html";
+      } catch (err) {
+        alert(err.message);
+        btn.disabled = false;
+        btn.textContent = "Deploy Tenant Workspace";
+      }
+    });
+  </script>
+</body>
+</html>
