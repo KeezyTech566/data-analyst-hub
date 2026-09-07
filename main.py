@@ -40,6 +40,8 @@ origins = [
     "http://127.0.0.1:8000",
     "https://data-analyst-hub.netlify.app",
     "https://data-analyst-hub-eight.vercel.app",
+    "https://dataanalysthub.com.ng",
+    "https://www.dataanalysthub.com.ng",
 ]
 
 app.add_middleware(
