@@ -33,15 +33,19 @@
 <body>
   <div class="onboard-page">
     <div class="onboard-card">
-      <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem;">
-        <svg class="brand-logo-small" viewBox="0 0 100 100" fill="none" style="width: 36px; height: 36px;">
-          <rect width="100" height="100" rx="20" fill="#0f172a" stroke="#334155" stroke-width="3"/>
-          <rect x="22" y="52" width="10" height="26" rx="3" fill="#38bdf8" />
-          <rect x="38" y="38" width="10" height="40" rx="3" fill="#818cf8" />
-          <rect x="54" y="26" width="10" height="52" rx="3" fill="#38bdf8" />
-        </svg>
-        <h2 style="font-size: 1.4rem; color: #f8fafc; margin: 0;">Enterprise Tenant Setup</h2>
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem;">
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <svg class="brand-logo-small" viewBox="0 0 100 100" fill="none" style="width: 36px; height: 36px;">
+            <rect width="100" height="100" rx="20" fill="#0f172a" stroke="#334155" stroke-width="3"/>
+            <rect x="22" y="52" width="10" height="26" rx="3" fill="#38bdf8" />
+            <rect x="38" y="38" width="10" height="40" rx="3" fill="#818cf8" />
+            <rect x="54" y="26" width="10" height="52" rx="3" fill="#38bdf8" />
+          </svg>
+          <h2 style="font-size: 1.4rem; color: #f8fafc; margin: 0;">Enterprise Tenant Setup</h2>
+        </div>
+        <a href="index.html" class="link-btn highlight" style="text-decoration: none; font-size: 0.85rem;">← Back to Hub</a>
       </div>
+      
       <p style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 2rem;">Provision your corporate organization workspace and define hierarchy security credentials.</p>
 
       <form id="standaloneOnboardForm">
@@ -67,7 +71,7 @@
         </div>
 
         <div style="border-top: 1px solid #334155; margin-top: 1.5rem; padding-top: 1rem;">
-          <p style="font-size: 0.85rem; font-weight: 600; color: #38bdf8; margin-bottom: 0.75rem;">Role-Level Security (RLS) Secret Keys</p>
+          <p style="font-size: 0.85rem; font-weight: 600; color: #38bdf8; margin-bottom: 0.75rem;">Row-Level Security (RLS) Secret Keys</p>
           <div class="grid-2">
             <div class="input-group">
               <label>Chairman Access Key</label>
@@ -103,22 +107,31 @@
       btn.disabled = true;
       btn.textContent = "Deploying Cluster...";
 
+      const bizName = document.getElementById('bizName').value.trim();
+      const adminEmail = document.getElementById('bizEmail').value.trim();
+
       try {
         const res = await fetch(`${API_BASE}/api/tenant/onboard`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            business_name: document.getElementById('bizName').value.trim(),
-            admin_email: document.getElementById('bizEmail').value.trim(),
+            business_name: bizName,
+            admin_email: adminEmail,
             industry: document.getElementById('bizIndustry').value,
             chairman_key: document.getElementById('keyChairman').value,
             cto_key: document.getElementById('keyCTO').value,
             retail_officer_key: document.getElementById('keyRetail').value
           })
         });
+
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || "Deployment failed.");
-        alert("Tenant deployed! Redirecting to analytics dashboard...");
+
+        // Store active session keys for immediate portal authentication
+        sessionStorage.setItem('currentUser', adminEmail.split('@')[0]);
+        sessionStorage.setItem('activeTenant', bizName);
+
+        alert(`Organization "${bizName}" deployed! Entering analytics portal...`);
         window.location.href = "index.html";
       } catch (err) {
         alert(err.message);
