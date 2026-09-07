@@ -358,7 +358,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Trigger Google Prompt securely on button click
   document.querySelectorAll('.google-auth-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      if (!window.google || GOOGLE_CLIENT_ID === "PASTE_YOUR_GOOGLE_CLIENT_ID_HERE.apps.googleusercontent.com") {
+      if (!window.google || GOOGLE_CLIENT_ID === "487022113604-rg3ha3890bhefro90rbv37m5fo1stt0k.apps.googleusercontent.com") {
         alert("Google Client ID is not configured properly in app.js.");
         return;
       }
