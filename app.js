@@ -85,6 +85,95 @@ document.addEventListener('DOMContentLoaded', () => {
   const resetUploadBtn = document.getElementById('resetUploadBtn');
   const uploadBtn = document.getElementById('uploadBtn');
 
+  // --- Ingestion Source Toggles ---
+  const tabCSV = document.getElementById('tabCSV');
+  const tabDB = document.getElementById('tabDB');
+  const csvIngestBox = document.getElementById('csvIngestBox');
+  const dbIngestBox = document.getElementById('dbIngestBox');
+  const connectDbBtn = document.getElementById('connectDbBtn');
+
+  if (tabCSV && tabDB) {
+    tabCSV.addEventListener('click', () => {
+      tabCSV.className = 'btn-primary';
+      tabDB.className = 'btn-secondary';
+      if (csvIngestBox) csvIngestBox.classList.remove('hidden');
+      if (dbIngestBox) dbIngestBox.classList.add('hidden');
+    });
+
+    tabDB.addEventListener('click', () => {
+      tabDB.className = 'btn-primary';
+      tabCSV.className = 'btn-secondary';
+      if (dbIngestBox) dbIngestBox.classList.remove('hidden');
+      if (csvIngestBox) csvIngestBox.classList.add('hidden');
+    });
+  }
+
+  // --- Live SQL & Lake Execution ---
+  if (connectDbBtn) {
+    connectDbBtn.addEventListener('click', async () => {
+      const engine = document.getElementById('dbEngine').value;
+      const uri = document.getElementById('dbUri').value.trim();
+      const query = document.getElementById('dbQuery').value.trim();
+      const loader = document.getElementById('loading');
+
+      if (!uri || !query) {
+        alert("Please provide both a connection string and an operational SQL query.");
+        return;
+      }
+
+      if (loader) loader.classList.remove('hidden');
+
+      try {
+        const res = await fetch(`${API_BASE}/api/analyze/database`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-User-Role": currentRole
+          },
+          body: JSON.stringify({
+            engine_type: engine,
+            connection_uri: uri,
+            sql_query: query
+          })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Query execution failed.");
+
+        if (fileNameDisplay) {
+          fileNameDisplay.textContent = `${engine.toUpperCase()} Live Query (View: ${data.applied_role || currentRole})`;
+        }
+
+        renderKPIs(data);
+        renderAllVisualizations(data.numeric_means);
+        renderTable(data.columns, data.preview);
+
+        uploadSection.classList.add('hidden');
+        metricsSection.classList.remove('hidden');
+      } catch (err) {
+        alert(err.message);
+      } finally {
+        if (loader) loader.classList.add('hidden');
+      }
+    });
+  }
+
+  // --- Microsoft Account SSO Hooks ---
+  document.querySelectorAll('.ms-auth-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const msMockEmail = prompt("Enter your Microsoft Work/School Account email:", "analyst@enterprise.onmicrosoft.com");
+      if (msMockEmail) {
+        const username = msMockEmail.split('@')[0];
+        sessionStorage.setItem('currentUser', username);
+        if (loggedInUserDisplay) loggedInUserDisplay.textContent = username;
+        if (landingSection) landingSection.classList.add('hidden');
+        if (loginSection) loginSection.classList.add('hidden');
+        if (registerSection) registerSection.classList.add('hidden');
+        if (mainDashboard) mainDashboard.classList.remove('hidden');
+      }
+    });
+  });
+
   let activeRecovery = { email: null };
 
   // --- Storage Handlers ---
