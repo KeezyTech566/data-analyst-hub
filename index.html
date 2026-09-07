@@ -76,6 +76,22 @@
         </div>
         <p id="loginError" class="auth-error hidden">Invalid credentials.</p>
         <button type="submit" class="btn-primary full-width">Sign In</button>
+
+        <div style="display: flex; align-items: center; margin: 1.25rem 0; color: #64748b;">
+          <hr style="flex: 1; border: none; border-top: 1px solid #334155;">
+          <span style="padding: 0 0.5rem; font-size: 0.75rem;">OR CONTINUE WITH</span>
+          <hr style="flex: 1; border: none; border-top: 1px solid #334155;">
+        </div>
+
+        <button type="button" class="btn-secondary full-width ms-auth-btn" style="display: flex; align-items: center; justify-content: center; gap: 0.6rem;">
+          <svg width="18" height="18" viewBox="0 0 21 21">
+            <path fill="#f25022" d="M1 1h9v9H1z"/>
+            <path fill="#00a4ef" d="M1 11h9v9H1z"/>
+            <path fill="#7fba00" d="M11 1h9v9H11z"/>
+            <path fill="#ffb900" d="M11 11h9v9H11z"/>
+          </svg>
+          <span>Sign in with Microsoft</span>
+        </button>
       </form>
 
       <div class="auth-switch">
@@ -123,6 +139,22 @@
         <p id="registerError" class="auth-error hidden"></p>
         <p id="registerSuccess" class="auth-success hidden">Account registered successfully!</p>
         <button type="submit" class="btn-primary full-width">Register & Enter</button>
+
+        <div style="display: flex; align-items: center; margin: 1.25rem 0; color: #64748b;">
+          <hr style="flex: 1; border: none; border-top: 1px solid #334155;">
+          <span style="padding: 0 0.5rem; font-size: 0.75rem;">OR CONTINUE WITH</span>
+          <hr style="flex: 1; border: none; border-top: 1px solid #334155;">
+        </div>
+
+        <button type="button" class="btn-secondary full-width ms-auth-btn" style="display: flex; align-items: center; justify-content: center; gap: 0.6rem;">
+          <svg width="18" height="18" viewBox="0 0 21 21">
+            <path fill="#f25022" d="M1 1h9v9H1z"/>
+            <path fill="#00a4ef" d="M1 11h9v9H1z"/>
+            <path fill="#7fba00" d="M11 1h9v9H11z"/>
+            <path fill="#ffb900" d="M11 11h9v9H11z"/>
+          </svg>
+          <span>Sign in with Microsoft</span>
+        </button>
       </form>
 
       <div class="auth-switch">
@@ -236,9 +268,9 @@
         <div class="user-greeting">
           <!-- Onboard Action & RLS Role Switcher -->
           <div style="display: flex; align-items: center; gap: 0.75rem; margin-right: 0.5rem;">
-            <button id="openOnboardBtn" class="btn-secondary" style="font-size: 0.8rem; padding: 0.35rem 0.7rem; color: #38bdf8;">
+            <a href="onboard.html" class="btn-secondary" style="text-decoration: none; font-size: 0.8rem; padding: 0.35rem 0.7rem; color: #38bdf8;">
               + Onboard New Business
-            </button>
+            </a>
             <div style="display: flex; align-items: center; gap: 0.4rem;">
               <label for="userRoleSelect" style="font-size: 0.8rem; color: #94a3b8; font-weight: 500;">RLS Role:</label>
               <select id="userRoleSelect" style="background: #1e293b; color: #38bdf8; border: 1px solid #334155; border-radius: 4px; padding: 0.35rem 0.5rem; font-size: 0.8rem; font-weight: 600;">
@@ -261,9 +293,42 @@
 
     <!-- Upload Card -->
     <section id="uploadSection" class="upload-card">
-      <input type="file" id="csvFileInput" accept=".csv">
-      <button id="uploadBtn" class="btn-primary">Analyze Dataset</button>
-      <span id="loading" class="hidden">Waking up backend & analyzing data... please wait up to 45s.</span>
+      <div style="display: flex; gap: 0.5rem; border-bottom: 1px solid #334155; margin-bottom: 1.5rem;">
+        <button id="tabCSV" class="btn-primary" style="font-size: 0.85rem;">📁 Flat CSV / Parquet</button>
+        <button id="tabDB" class="btn-secondary" style="font-size: 0.85rem;">🗄️ SQL / Postgres / Apache Ingestion</button>
+      </div>
+
+      <!-- CSV File Mode -->
+      <div id="csvIngestBox">
+        <input type="file" id="csvFileInput" accept=".csv,.parquet">
+        <button id="uploadBtn" class="btn-primary">Analyze Dataset</button>
+      </div>
+
+      <!-- Enterprise Database / Data Lake Mode -->
+      <div id="dbIngestBox" class="hidden" style="text-align: left;">
+        <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 0.75rem; margin-bottom: 0.75rem;">
+          <div class="input-group">
+            <label>Engine Target</label>
+            <select id="dbEngine" style="background: #1e293b; color: #fff; border: 1px solid #334155; padding: 0.5rem; border-radius: 4px;">
+              <option value="postgresql">PostgreSQL</option>
+              <option value="mssql">Microsoft SQL Server</option>
+              <option value="mysql">MySQL</option>
+              <option value="sqlite">SQLite Cloud</option>
+            </select>
+          </div>
+          <div class="input-group">
+            <label>SQLAlchemy Connection URI</label>
+            <input type="password" id="dbUri" placeholder="postgresql://user:pass@ep-prod.postgres.database.azure.com:5432/reporting_db">
+          </div>
+        </div>
+        <div class="input-group">
+          <label>Target Query / Table View</label>
+          <input type="text" id="dbQuery" placeholder="SELECT * FROM v_enterprise_performance_q3 WHERE 1=1">
+        </div>
+        <button id="connectDbBtn" class="btn-primary" style="margin-top: 1rem;">Pull & Profile Live Lake</button>
+      </div>
+
+      <span id="loading" class="hidden" style="margin-top: 1rem; display: block; color: #38bdf8;">Waking up backend & analyzing data... please wait.</span>
     </section>
 
     <!-- Metrics & Full Visualization Suite -->
