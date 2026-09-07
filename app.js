@@ -1,27 +1,17 @@
-
 document.addEventListener('DOMContentLoaded', () => {
-  // Active chart instances cache
   let charts = {
     column: null,
     bar: null,
-    stackedColumn: null,
-    stackedBar: null,
     line: null,
-    doughnut: null,
-    waterfall: null,
-    funnel: null,
-    gauge: null
+    doughnut: null
   };
 
-  // Explicit Backend Base & Endpoint Configuration
   const API_BASE = "https://data-analyst-hub.onrender.com";
   const BACKEND_URL = `${API_BASE}/api/analyze`;
 
-  // Retain active file and role in memory for instant switching
   let activeCachedFile = null;
   let currentRole = "Chairman";
 
-  // Active dataset context for DAX measure calculations
   let activeDatasetContext = {
     columns: [],
     preview: []
@@ -37,7 +27,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // View Containers
   const landingSection = document.getElementById('landingSection');
   const loginSection = document.getElementById('loginSection');
   const registerSection = document.getElementById('registerSection');
@@ -47,14 +36,20 @@ document.addEventListener('DOMContentLoaded', () => {
   const transformSection = document.getElementById('transformSection');
   const transformMsg = document.getElementById('transformMsg');
 
-  // Navigation & Auth Buttons
   const heroCreateAccountBtn = document.getElementById('heroCreateAccountBtn');
   const heroLoginBtn = document.getElementById('heroLoginBtn');
+  const heroLoginHeaderBtn = document.getElementById('heroLoginHeaderBtn');
+  const heroCreateAccountHeaderBtn = document.getElementById('heroCreateAccountHeaderBtn');
+  const heroCreateAccountBottomBtn = document.getElementById('heroCreateAccountBottomBtn');
+  
+  const pricingFreeBtn = document.getElementById('pricingFreeBtn');
+  const pricingProBtn = document.getElementById('pricingProBtn');
+  const pricingEnterpriseBtn = document.getElementById('pricingEnterpriseBtn');
+
   const switchToRegisterBtn = document.getElementById('switchToRegisterBtn');
   const switchToLoginBtn = document.getElementById('switchToLoginBtn');
   const logoutBtn = document.getElementById('logoutBtn');
 
-  // Forms & Inputs
   const loginForm = document.getElementById('loginForm');
   const registerForm = document.getElementById('registerForm');
   const loginError = document.getElementById('loginError');
@@ -62,235 +57,50 @@ document.addEventListener('DOMContentLoaded', () => {
   const registerSuccess = document.getElementById('registerSuccess');
   const loggedInUserDisplay = document.getElementById('loggedInUserDisplay');
 
-  // Password Toggles
   const toggleLoginPasswordBtn = document.getElementById('toggleLoginPasswordBtn');
   const loginPasswordInput = document.getElementById('loginPassword');
   const toggleRegisterPasswordBtn = document.getElementById('toggleRegisterPasswordBtn');
   const registerPasswordInput = document.getElementById('registerPassword');
 
-  // Modal & Recovery Elements
-  const forgotPassLink = document.getElementById('forgotPassLink');
-  const forgotPassModal = document.getElementById('forgotPassModal');
-  const closeModalBtn = document.getElementById('closeModalBtn');
-  const resetStep1 = document.getElementById('resetStep1');
-  const resetStep2 = document.getElementById('resetStep2');
-  const resetEmailInput = document.getElementById('resetEmailInput');
-  const sendResetCodeBtn = document.getElementById('sendResetCodeBtn');
-  const resetError = document.getElementById('resetError');
-  const resetCodeInput = document.getElementById('resetCodeInput');
-  const resetNewPassword = document.getElementById('resetNewPassword');
-  const step2Error = document.getElementById('step2Error');
-  const step2Success = document.getElementById('step2Success');
-  const verifyAndResetBtn = document.getElementById('verifyAndResetBtn');
-  const backToStep1Btn = document.getElementById('backToStep1Btn');
-
-  // Upload Elements
   const fileInput = document.getElementById('csvFileInput');
   const fileNameDisplay = document.getElementById('fileNameDisplay');
   const resetUploadBtn = document.getElementById('resetUploadBtn');
   const uploadBtn = document.getElementById('uploadBtn');
 
-  // --- Ingestion Source Toggles ---
-  const tabCSV = document.getElementById('tabCSV');
-  const tabDB = document.getElementById('tabDB');
-  const csvIngestBox = document.getElementById('csvIngestBox');
-  const dbIngestBox = document.getElementById('dbIngestBox');
-  const connectDbBtn = document.getElementById('connectDbBtn');
-
-  if (tabCSV && tabDB) {
-    tabCSV.addEventListener('click', () => {
-      tabCSV.className = 'btn-primary';
-      tabDB.className = 'btn-secondary';
-      if (csvIngestBox) csvIngestBox.classList.remove('hidden');
-      if (dbIngestBox) dbIngestBox.classList.add('hidden');
-    });
-
-    tabDB.addEventListener('click', () => {
-      tabDB.className = 'btn-primary';
-      tabCSV.className = 'btn-secondary';
-      if (dbIngestBox) dbIngestBox.classList.remove('hidden');
-      if (csvIngestBox) csvIngestBox.classList.add('hidden');
-    });
-  }
-
-  // --- Live SQL & Lake Execution ---
-  if (connectDbBtn) {
-    connectDbBtn.addEventListener('click', async () => {
-      const engine = document.getElementById('dbEngine').value;
-      const uri = document.getElementById('dbUri').value.trim();
-      const query = document.getElementById('dbQuery').value.trim();
-      const loader = document.getElementById('loading');
-
-      if (!uri || !query) {
-        alert("Please provide both a connection string and an operational SQL query.");
-        return;
-      }
-
-      if (loader) loader.classList.remove('hidden');
-
-      try {
-        const res = await fetch(`${API_BASE}/api/analyze/database`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-User-Role": currentRole
-          },
-          body: JSON.stringify({
-            engine_type: engine,
-            connection_uri: uri,
-            sql_query: query
-          })
-        });
-
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || "Query execution failed.");
-
-        if (fileNameDisplay) {
-          fileNameDisplay.textContent = `${engine.toUpperCase()} Live Query (View: ${data.applied_role || currentRole})`;
-        }
-
-        activeDatasetContext.columns = data.columns || [];
-        activeDatasetContext.preview = data.preview || [];
-
-        renderKPIs(data);
-        renderAllVisualizations(data.numeric_means);
-        renderTable(data.columns, data.preview);
-
-        uploadSection.classList.add('hidden');
-        if (transformSection) transformSection.classList.remove('hidden');
-        metricsSection.classList.remove('hidden');
-      } catch (err) {
-        alert(err.message);
-      } finally {
-        if (loader) loader.classList.add('hidden');
-      }
-    });
-  }
-
-  // --- Data Transformation Studio Event Handlers ---
-  async function applyTransformation(actionType, successMessage) {
-    if (activeDatasetContext.preview.length === 0) {
-      alert("No active dataset loaded to transform.");
-      return;
-    }
-
-    try {
-      const res = await fetch(`${API_BASE}/api/transform/apply`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: actionType,
-          dataset_preview: activeDatasetContext.preview,
-          columns: activeDatasetContext.columns
-        })
+  // --- Pricing & Landing CTA Event Handlers ---
+  [heroCreateAccountBtn, heroCreateAccountHeaderBtn, heroCreateAccountBottomBtn, pricingFreeBtn].forEach(btn => {
+    if (btn) {
+      btn.addEventListener('click', () => {
+        if (landingSection) landingSection.classList.add('hidden');
+        if (registerSection) registerSection.classList.remove('hidden');
       });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Transformation failed.");
-
-      activeDatasetContext.columns = data.columns || [];
-      activeDatasetContext.preview = data.preview || [];
-
-      renderTable(data.columns, data.preview);
-      
-      if (transformMsg) {
-        transformMsg.textContent = successMessage;
-        transformMsg.classList.remove('hidden');
-        setTimeout(() => transformMsg.classList.add('hidden'), 3000);
-      }
-    } catch (err) {
-      alert(`Transformation Error: ${err.message}`);
     }
-  }
+  });
 
-  const btnDropNulls = document.getElementById('btnDropNulls');
-  if (btnDropNulls) {
-    btnDropNulls.addEventListener('click', () => applyTransformation('drop_nulls', 'Null rows successfully removed!'));
-  }
+  [heroLoginBtn, heroLoginHeaderBtn].forEach(btn => {
+    if (btn) {
+      btn.addEventListener('click', () => {
+        if (landingSection) landingSection.classList.add('hidden');
+        if (loginSection) loginSection.classList.remove('hidden');
+      });
+    }
+  });
 
-  const btnDropDuplicates = document.getElementById('btnDropDuplicates');
-  if (btnDropDuplicates) {
-    btnDropDuplicates.addEventListener('click', () => applyTransformation('drop_duplicates', 'Duplicate records successfully stripped!'));
-  }
-
-  const btnStandardizeDates = document.getElementById('btnStandardizeDates');
-  if (btnStandardizeDates) {
-    btnStandardizeDates.addEventListener('click', () => applyTransformation('standardize_dates', 'Date fields standardized to YYYY-MM-DD!'));
-  }
-
-  const btnUppercase = document.getElementById('btnUppercase');
-  if (btnUppercase) {
-    btnUppercase.addEventListener('click', () => applyTransformation('uppercase_text', 'Text attributes converted to uppercase!'));
-  }
-
-  // --- DAX Measure Calculation & Dynamic Card Generation ---
-  const evaluateDaxBtn = document.getElementById('evaluateDaxBtn');
-  const daxInput = document.getElementById('daxInput');
-  const daxOutputMsg = document.getElementById('daxOutputMsg');
-  const dynamicCardGrid = document.getElementById('dynamicCardGrid');
-
-  if (evaluateDaxBtn) {
-    evaluateDaxBtn.addEventListener('click', async () => {
-      const formula = daxInput.value.trim();
-      if (!formula) {
-        alert("Please enter a DAX formula (e.g., Total Sales = SUM([Revenue]))");
-        return;
-      }
-
-      if (activeDatasetContext.preview.length === 0) {
-        alert("Please analyze a dataset or connect a database first before creating measures.");
-        return;
-      }
-
-      evaluateDaxBtn.disabled = true;
-      evaluateDaxBtn.textContent = "Calculating...";
-      daxOutputMsg.classList.add('hidden');
-
-      try {
-        const res = await fetch(`${API_BASE}/api/measures/evaluate`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            formula: formula,
-            dataset_preview: activeDatasetContext.preview,
-            columns: activeDatasetContext.columns
-          })
-        });
-
-        const result = await res.json();
-        if (!res.ok) throw new Error(result.detail || "DAX computation failed.");
-
-        const newCard = document.createElement('div');
-        newCard.className = 'card';
-        newCard.style.border = '1px solid #38bdf8';
-        newCard.innerHTML = `
-          <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-            <h3 style="color: #94a3b8; font-size: 0.85rem; margin-bottom: 0.35rem;">${result.name}</h3>
-            <span style="font-size: 0.65rem; color: #38bdf8; font-family: monospace;">DAX</span>
-          </div>
-          <p style="font-size: 1.6rem; font-weight: 700; color: #38bdf8; margin: 0.2rem 0;">${result.value}</p>
-          <span style="font-size: 0.7rem; color: #64748b; font-family: monospace; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${result.formula}">fx: ${result.formula}</span>
-        `;
-        dynamicCardGrid.appendChild(newCard);
-
-        daxOutputMsg.textContent = `Measure "${result.name}" evaluated successfully and added as a visual card!`;
-        daxOutputMsg.style.color = "#34d399";
-        daxOutputMsg.classList.remove('hidden');
-        daxInput.value = '';
-      } catch (err) {
-        daxOutputMsg.textContent = err.message;
-        daxOutputMsg.style.color = "#f87171";
-        daxOutputMsg.classList.remove('hidden');
-      } finally {
-        evaluateDaxBtn.disabled = false;
-        evaluateDaxBtn.textContent = "Run Measure";
-      }
+  // Professional Tier Button -> Redirect to Checkout / Payment Gateway (e.g., Paystack)
+  if (pricingProBtn) {
+    pricingProBtn.addEventListener('click', () => {
+      window.location.href = "https://paystack.com/pay/data-analyst-hub-pro";
     });
   }
 
-  // =========================================================================
-  // Google Identity Services (GIS) & Inbox OTP Engine
-  // =========================================================================
+  // Enterprise Tier Button -> Contact Sales
+  if (pricingEnterpriseBtn) {
+    pricingEnterpriseBtn.addEventListener('click', () => {
+      window.location.href = "mailto:support@dataanalysthub.com.ng?subject=Enterprise%20Subscription%20Inquiry";
+    });
+  }
+
+  // --- Google Identity Services (GIS) & Authentication ---
   const GOOGLE_CLIENT_ID = "487022113604-rg3ha3890bhefro90rbv37m5fo1stt0k.apps.googleusercontent.com";
 
   function completeAuthSession(username, email, provider) {
@@ -369,117 +179,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // --- Email OTP Handlers ---
-  const otpModal = document.getElementById('otpModal');
-  const otpStep1 = document.getElementById('otpStep1');
-  const otpStep2 = document.getElementById('otpStep2');
-  const otpEmailInput = document.getElementById('otpEmailInput');
-  const otpCodeInput = document.getElementById('otpCodeInput');
-  const sendOtpBtn = document.getElementById('sendOtpBtn');
-  const verifyOtpBtn = document.getElementById('verifyOtpBtn');
-  const closeOtpBtn = document.getElementById('closeOtpBtn');
-  const backOtpBtn = document.getElementById('backOtpBtn');
-  const otpError = document.getElementById('otpError');
-  const otpStep2Error = document.getElementById('otpStep2Error');
-
-  let activeOtpEmail = "";
-
-  document.querySelectorAll('.gmail-otp-link').forEach(link => {
-    link.addEventListener('click', () => {
-      if (otpModal) {
-        otpModal.classList.remove('hidden');
-        otpStep1.classList.remove('hidden');
-        otpStep2.classList.add('hidden');
-        otpError.classList.add('hidden');
-        otpEmailInput.value = "";
-      }
-    });
-  });
-
-  if (closeOtpBtn) {
-    closeOtpBtn.addEventListener('click', () => otpModal.classList.add('hidden'));
-  }
-
-  if (backOtpBtn) {
-    backOtpBtn.addEventListener('click', () => {
-      otpStep2.classList.add('hidden');
-      otpStep1.classList.remove('hidden');
-    });
-  }
-
-  if (sendOtpBtn) {
-    sendOtpBtn.addEventListener('click', async () => {
-      const email = otpEmailInput.value.trim().toLowerCase();
-      otpError.classList.add('hidden');
-
-      if (!email || !email.includes('@')) {
-        otpError.textContent = "Please enter a valid email address.";
-        otpError.classList.remove('hidden');
-        return;
-      }
-
-      sendOtpBtn.disabled = true;
-      sendOtpBtn.textContent = "Transmitting code...";
-
-      try {
-        const res = await fetch(`${API_BASE}/api/auth/send-otp`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: email })
-        });
-
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || "Failed to dispatch verification email.");
-
-        activeOtpEmail = email;
-        otpStep1.classList.add('hidden');
-        otpStep2.classList.remove('hidden');
-      } catch (err) {
-        otpError.textContent = err.message;
-        otpError.classList.remove('hidden');
-      } finally {
-        sendOtpBtn.disabled = false;
-        sendOtpBtn.textContent = "Send Code";
-      }
-    });
-  }
-
-  if (verifyOtpBtn) {
-    verifyOtpBtn.addEventListener('click', async () => {
-      const code = otpCodeInput.value.trim();
-      otpStep2Error.classList.add('hidden');
-
-      if (code.length !== 6) {
-        otpStep2Error.textContent = "Please enter the complete 6-digit code.";
-        otpStep2Error.classList.remove('hidden');
-        return;
-      }
-
-      verifyOtpBtn.disabled = true;
-      verifyOtpBtn.textContent = "Authenticating...";
-
-      try {
-        const res = await fetch(`${API_BASE}/api/auth/verify-otp`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: activeOtpEmail, code: code })
-        });
-
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || "Verification failed.");
-
-        otpModal.classList.add('hidden');
-        completeAuthSession(data.username, data.email, "email_otp");
-      } catch (err) {
-        otpStep2Error.textContent = err.message;
-        otpStep2Error.classList.remove('hidden');
-      } finally {
-        verifyOtpBtn.disabled = false;
-        verifyOtpBtn.textContent = "Verify & Enter";
-      }
-    });
-  }
-
   // --- Storage Handlers ---
   function getRegisteredUsers() {
     const users = localStorage.getItem('analyst_users_directory');
@@ -492,38 +191,23 @@ document.addEventListener('DOMContentLoaded', () => {
     localStorage.setItem('analyst_users_directory', JSON.stringify(users));
   }
 
-  // --- Session Verification ---
   const activeSession = sessionStorage.getItem('currentUser');
   if (activeSession && mainDashboard) {
     showDashboard(activeSession);
   }
 
   // --- View Switches ---
-  if (heroCreateAccountBtn) {
-    heroCreateAccountBtn.addEventListener('click', () => {
-      landingSection.classList.add('hidden');
-      registerSection.classList.remove('hidden');
-    });
-  }
-
-  if (heroLoginBtn) {
-    heroLoginBtn.addEventListener('click', () => {
-      landingSection.classList.add('hidden');
-      loginSection.classList.remove('hidden');
-    });
-  }
-
   if (switchToRegisterBtn) {
     switchToRegisterBtn.addEventListener('click', () => {
-      loginSection.classList.add('hidden');
-      registerSection.classList.remove('hidden');
+      if (loginSection) loginSection.classList.add('hidden');
+      if (registerSection) registerSection.classList.remove('hidden');
     });
   }
 
   if (switchToLoginBtn) {
     switchToLoginBtn.addEventListener('click', () => {
-      registerSection.classList.add('hidden');
-      loginSection.classList.remove('hidden');
+      if (registerSection) registerSection.classList.add('hidden');
+      if (loginSection) loginSection.classList.remove('hidden');
     });
   }
 
@@ -553,36 +237,42 @@ document.addEventListener('DOMContentLoaded', () => {
       const password = registerPasswordInput.value;
       const confirmPassword = document.getElementById('registerConfirmPassword').value;
 
-      registerError.classList.add('hidden');
-      registerSuccess.classList.add('hidden');
+      if (registerError) registerError.classList.add('hidden');
+      if (registerSuccess) registerSuccess.classList.add('hidden');
 
       if (password !== confirmPassword) {
-        registerError.textContent = "Passwords do not match.";
-        registerError.classList.remove('hidden');
+        if (registerError) {
+          registerError.textContent = "Passwords do not match.";
+          registerError.classList.remove('hidden');
+        }
         return;
       }
 
       const users = getRegisteredUsers();
       if (users.some(u => u.email === email)) {
-        registerError.textContent = "An account with this email already exists.";
-        registerError.classList.remove('hidden');
+        if (registerError) {
+          registerError.textContent = "An account with this email already exists.";
+          registerError.classList.remove('hidden');
+        }
         return;
       }
 
       if (users.some(u => u.username.toLowerCase() === username.toLowerCase())) {
-        registerError.textContent = "This username is taken. Please choose another.";
-        registerError.classList.remove('hidden');
+        if (registerError) {
+          registerError.textContent = "This username is taken. Please choose another.";
+          registerError.classList.remove('hidden');
+        }
         return;
       }
 
       saveRegisteredUser({ email, username, password });
 
-      registerSuccess.classList.remove('hidden');
+      if (registerSuccess) registerSuccess.classList.remove('hidden');
       setTimeout(() => {
         sessionStorage.setItem('currentUser', username);
         registerForm.reset();
-        registerSuccess.classList.add('hidden');
-        registerSection.classList.add('hidden');
+        if (registerSuccess) registerSuccess.classList.add('hidden');
+        if (registerSection) registerSection.classList.add('hidden');
         showDashboard(username);
       }, 1000);
     });
@@ -603,13 +293,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (user) {
         sessionStorage.setItem('currentUser', user.username);
-        loginError.classList.add('hidden');
+        if (loginError) loginError.classList.add('hidden');
         loginForm.reset();
-        loginSection.classList.add('hidden');
+        if (loginSection) loginSection.classList.add('hidden');
         showDashboard(user.username);
       } else {
-        loginError.textContent = "Invalid email, username, or password.";
-        loginError.classList.remove('hidden');
+        if (loginError) {
+          loginError.textContent = "Invalid email, username, or password.";
+          loginError.classList.remove('hidden');
+        }
       }
     });
   }
@@ -620,8 +312,8 @@ document.addEventListener('DOMContentLoaded', () => {
       sessionStorage.removeItem('activeTenant');
       activeCachedFile = null;
       activeDatasetContext = { columns: [], preview: [] };
-      mainDashboard.classList.add('hidden');
-      landingSection.classList.remove('hidden');
+      if (mainDashboard) mainDashboard.classList.add('hidden');
+      if (landingSection) landingSection.classList.remove('hidden');
     });
   }
 
@@ -671,9 +363,9 @@ document.addEventListener('DOMContentLoaded', () => {
       renderAllVisualizations(data.numeric_means);
       renderTable(data.columns, data.preview);
 
-      uploadSection.classList.add('hidden');
+      if (uploadSection) uploadSection.classList.add('hidden');
       if (transformSection) transformSection.classList.remove('hidden');
-      metricsSection.classList.remove('hidden');
+      if (metricsSection) metricsSection.classList.remove('hidden');
     } catch (err) {
       alert(err.message);
     } finally {
@@ -698,8 +390,8 @@ document.addEventListener('DOMContentLoaded', () => {
       activeCachedFile = null;
       activeDatasetContext = { columns: [], preview: [] };
       if (transformSection) transformSection.classList.add('hidden');
-      metricsSection.classList.add('hidden');
-      uploadSection.classList.remove('hidden');
+      if (metricsSection) metricsSection.classList.add('hidden');
+      if (uploadSection) uploadSection.classList.remove('hidden');
     });
   }
 
