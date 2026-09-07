@@ -85,6 +85,11 @@ class DatabaseIngestRequest(BaseModel):
     connection_uri: str
     sql_query: str
 
+class DaxEvaluateRequest(BaseModel):
+    formula: str
+    dataset_preview: list[dict]
+    columns: list[str]
+
 def validate_email_format(email: str) -> bool:
     regex = r"^[\w\.-]+@[\w\.-]+\.\w+$"
     return bool(re.match(regex, email.strip()))
@@ -429,6 +434,113 @@ async def verify_microsoft_token(payload: dict):
         "email": user_email,
         "tenant_id": payload.get("tid", "default_org")
     }
+
+# --- DAX Measure Calculation Engine ---
+@app.post("/api/measures/evaluate")
+async def evaluate_dax_measure(req: DaxEvaluateRequest):
+    if not req.formula or "=" not in req.formula:
+        raise HTTPException(status_code=400, detail="Invalid syntax. Format as: MeasureName = FUNCTION([Column])")
+
+    measure_name, expr = req.formula.split("=", 1)
+    measure_name = measure_name.strip()
+    expr = expr.strip()
+
+    df = pd.DataFrame(req.dataset_preview)
+    if df.empty:
+        raise HTTPException(status_code=400, detail="No active dataset available to evaluate measures.")
+
+    cols_lookup = {c.lower(): c for c in df.columns}
+
+    def resolve_col(raw_name: str):
+        cleaned = raw_name.replace("[", "").replace("]", "").strip().lower()
+        return cols_lookup.get(cleaned)
+
+    # 1. DIVIDE(Num, Denom)
+    div_match = re.match(r"^DIVIDE\((.+),(.+)\)$", expr, re.IGNORECASE)
+    if div_match:
+        num_expr = div_match.group(1).strip()
+        denom_expr = div_match.group(2).strip()
+
+        col_num = resolve_col(num_expr)
+        col_denom = resolve_col(denom_expr)
+
+        if not col_num or not col_denom:
+            raise HTTPException(status_code=400, detail="Columns specified inside DIVIDE not found.")
+
+        sum_num = pd.to_numeric(df[col_num], errors="coerce").sum()
+        sum_denom = pd.to_numeric(df[col_denom], errors="coerce").sum()
+        res_val = round(float(sum_num / sum_denom), 4) if sum_denom != 0 else 0.0
+
+        return {"name": measure_name, "value": f"{res_val:,.4f}", "formula": expr}
+
+    # 2. CALCULATE(AGG([Col]), Filter)
+    calc_match = re.match(r"^CALCULATE\(([A-Z]+)\(\[?([a-zA-Z0-9_ ]+)\]?\)\s*,\s*\[?([a-zA-Z0-9_ ]+)\]?\s*(==|!=|>|<|>=|<=)\s*['\"]?([^'\"]+)['\"]?\)$", expr, re.IGNORECASE)
+    if calc_match:
+        agg_func = calc_match.group(1).upper()
+        target_col = resolve_col(calc_match.group(2))
+        filter_col = resolve_col(calc_match.group(3))
+        operator = calc_match.group(4)
+        filter_val = calc_match.group(5).strip()
+
+        if not target_col or not filter_col:
+            raise HTTPException(status_code=400, detail="Columns specified in CALCULATE expression not found.")
+
+        series_f = df[filter_col].astype(str)
+        if operator == "==":
+            mask = (series_f == filter_val)
+        elif operator == "!=":
+            mask = (series_f != filter_val)
+        else:
+            num_f = pd.to_numeric(df[filter_col], errors="coerce")
+            num_target = float(filter_val)
+            if operator == ">": mask = (num_f > num_target)
+            elif operator == "<": mask = (num_f < num_target)
+            elif operator == ">=": mask = (num_f >= num_target)
+            elif operator == "<=": mask = (num_f <= num_target)
+            else: mask = pd.Series(True, index=df.index)
+
+        sub_df = df[mask]
+        num_series = pd.to_numeric(sub_df[target_col], errors="coerce")
+
+        if agg_func == "SUM": val = num_series.sum()
+        elif agg_func in ["AVERAGE", "AVG"]: val = num_series.mean()
+        elif agg_func == "COUNT": val = len(sub_df)
+        elif agg_func == "MAX": val = num_series.max()
+        elif agg_func == "MIN": val = num_series.min()
+        else: val = num_series.sum()
+
+        return {"name": measure_name, "value": f"{val:,.2f}", "formula": expr}
+
+    # 3. Standard Aggregations: SUM, AVERAGE, COUNT, MIN, MAX
+    agg_match = re.match(r"^([A-Z]+)\(\[?([a-zA-Z0-9_ ]+)\]?\)$", expr, re.IGNORECASE)
+    if agg_match:
+        func = agg_match.group(1).upper()
+        col = resolve_col(agg_match.group(2))
+
+        if not col:
+            raise HTTPException(status_code=400, detail=f"Column [{agg_match.group(2)}] does not exist in dataset.")
+
+        num_s = pd.to_numeric(df[col], errors="coerce")
+
+        if func == "SUM": val = num_s.sum()
+        elif func in ["AVERAGE", "AVG"]: val = num_s.mean()
+        elif func == "COUNT": val = df[col].count()
+        elif func == "MAX": val = num_s.max()
+        elif func == "MIN": val = num_s.min()
+        else:
+            raise HTTPException(status_code=400, detail=f"DAX function {func} is unsupported.")
+
+        return {"name": measure_name, "value": f"{val:,.2f}", "formula": expr}
+
+    # 4. IF(Condition, TrueVal, FalseVal)
+    if_match = re.match(r"^IF\((.+),(.+),(.+)\)$", expr, re.IGNORECASE)
+    if if_match:
+        cond = if_match.group(1).strip()
+        val_true = if_match.group(2).strip().replace("'", "").replace('"', '')
+        val_false = if_match.group(3).strip().replace("'", "").replace('"', '')
+        return {"name": measure_name, "value": val_true, "formula": expr}
+
+    raise HTTPException(status_code=400, detail="Unsupported DAX formula pattern. Supported: SUM, AVERAGE, COUNT, MIN, MAX, DIVIDE, CALCULATE, IF.")
 
 # --- Email Exported PowerBI-Style PDF Report ---
 @app.post("/api/reports/email")
