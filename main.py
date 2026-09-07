@@ -151,28 +151,58 @@ async def onboard_tenant(req: OnboardBusinessRequest):
     }
     return {"message": "Business successfully onboarded.", "tenant_id": tenant_id}
 
-# --- Dual Row-Level & Column-Level Security CSV Profiling Endpoint ---
+# --- Multi-Format Ingestion & Dual RLS Profiling Endpoint ---
 @app.post("/api/analyze")
-async def analyze_csv(
+async def analyze_file(
     file: UploadFile = File(...),
     x_user_role: str = Header(default="Chairman")
 ):
-    if not file.filename.lower().endswith(".csv"):
-        raise HTTPException(status_code=400, detail="Only CSV files are supported.")
-
+    filename = file.filename.lower()
     contents = await file.read()
     df = None
-    encodings = ["utf-8", "utf-16", "utf-8-sig", "latin1", "cp1252"]
 
-    for enc in encodings:
-        try:
-            df = pd.read_csv(io.BytesIO(contents), encoding=enc)
-            break
-        except (UnicodeDecodeError, pd.errors.ParserError):
-            continue
+    try:
+        # 1. CSV / TSV Parsing
+        if filename.endswith(".csv") or filename.endswith(".tsv") or filename.endswith(".txt"):
+            delimiter = "\t" if filename.endswith(".tsv") else ","
+            encodings = ["utf-8", "utf-16", "utf-8-sig", "latin1", "cp1252"]
+            for enc in encodings:
+                try:
+                    df = pd.read_csv(io.BytesIO(contents), encoding=enc, sep=delimiter)
+                    break
+                except (UnicodeDecodeError, pd.errors.ParserError):
+                    continue
 
-    if df is None:
-        raise HTTPException(status_code=400, detail="Unable to parse CSV. Incompatible file encoding.")
+        # 2. Modern Excel (.xlsx, .xlsm)
+        elif filename.endswith(".xlsx") or filename.endswith(".xlsm"):
+            df = pd.read_excel(io.BytesIO(contents), engine="openpyxl")
+
+        # 3. Legacy Excel (.xls)
+        elif filename.endswith(".xls"):
+            df = pd.read_excel(io.BytesIO(contents), engine="xlrd")
+
+        # 4. Apache Parquet (.parquet)
+        elif filename.endswith(".parquet"):
+            df = pd.read_parquet(io.BytesIO(contents))
+
+        # 5. Structured JSON (.json)
+        elif filename.endswith(".json"):
+            try:
+                df = pd.read_json(io.BytesIO(contents), orient="records")
+            except ValueError:
+                df = pd.read_json(io.BytesIO(contents))
+
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail="Unsupported file format. Supported formats: CSV, XLSX, XLS, PARQUET, JSON, TSV."
+            )
+
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to process {file.filename}: {str(e)}")
+
+    if df is None or df.empty:
+        raise HTTPException(status_code=400, detail="The uploaded file contains no readable records.")
 
     # -------------------------------------------------------------
     # Role Normalization Engine
@@ -201,14 +231,14 @@ async def analyze_csv(
     high_finance_keywords = ["profit", "ebitda", "margin", "revenue", "supplier_cost", "net_profit"]
     infra_tech_keywords = ["latency", "uptime", "server", "ip_address", "error_rate", "db_cluster"]
 
-    cols_lower = {c: c.lower() for c in df.columns}
+    cols_lower = {str(c).lower(): c for c in df.columns}
 
     # -------------------------------------------------------------
-    # 1. ROW-LEVEL SECURITY (RLS) - Filters Rows by Department/Location
+    # 1. ROW-LEVEL SECURITY (RLS) - Department / Regional Isolation
     # -------------------------------------------------------------
     filter_col = None
     for c in df.columns:
-        if c.lower() in ["store_location", "region", "desk", "operational_unit", "department"]:
+        if str(c).lower() in ["store_location", "region", "desk", "operational_unit", "department"]:
             filter_col = c
             break
 
@@ -226,22 +256,22 @@ async def analyze_csv(
             # Chairman & CFO retain all rows
 
     # -------------------------------------------------------------
-    # 2. COLUMN-LEVEL SECURITY - Masks Sensitive Attributes
+    # 2. COLUMN-LEVEL SECURITY - Attribute Masking
     # -------------------------------------------------------------
     if role == "Chairman":
         pass
     elif role == "Chief Financial Officer (CFO)":
-        df = df[[c for c, cl in cols_lower.items() if not any(k in cl for k in infra_tech_keywords)]]
+        df = df[[orig for low, orig in cols_lower.items() if not any(k in low for k in infra_tech_keywords)]]
     elif role == "Chief Technology Officer (CTO)":
-        df = df[[c for c, cl in cols_lower.items() if not any(k in cl for k in compensation_keywords + ["net_profit", "ebitda"])]]
+        df = df[[orig for low, orig in cols_lower.items() if not any(k in low for k in compensation_keywords + ["net_profit", "ebitda"])]]
     elif role == "Chief Information Officer (CIO)":
-        df = df[[c for c, cl in cols_lower.items() if not any(k in cl for k in pii_keywords + ["bonus"])]]
+        df = df[[orig for low, orig in cols_lower.items() if not any(k in low for k in pii_keywords + ["bonus"])]]
     elif role == "Relationship Manager (RM)":
         restricted = compensation_keywords + ["supplier_cost", "maintenance_cost", "operational_cost", "expense_ratio"]
-        df = df[[c for c, cl in cols_lower.items() if not any(k in cl for k in restricted)]]
+        df = df[[orig for low, orig in cols_lower.items() if not any(k in low for k in restricted)]]
     elif role == "Retail Officer":
         restricted = high_finance_keywords + compensation_keywords + ["volatility", "aum"]
-        df = df[[c for c, cl in cols_lower.items() if not any(k in cl for k in restricted)]]
+        df = df[[orig for low, orig in cols_lower.items() if not any(k in low for k in restricted)]]
 
     # Clean numeric representations (stripping currency characters and commas)
     for col in df.columns:
@@ -251,12 +281,12 @@ async def analyze_csv(
             if converted.notnull().sum() > (0.5 * len(df)):
                 df[col] = converted
 
-    # Calculate aggregations only on permissible columns
+    # Calculate aggregations on numerical columns
     numeric_df = df.select_dtypes(include=[np.number])
     numeric_means = {}
     if not numeric_df.empty:
         numeric_means = {
-            col: round(float(numeric_df[col].mean()), 2)
+            str(col): round(float(numeric_df[col].mean()), 2)
             for col in numeric_df.columns
             if pd.notnull(numeric_df[col].mean())
         }
@@ -267,7 +297,7 @@ async def analyze_csv(
         "filename": file.filename,
         "total_rows": int(len(df)),
         "total_columns": int(len(df.columns)),
-        "columns": df.columns.tolist(),
+        "columns": [str(c) for c in df.columns.tolist()],
         "numeric_means": numeric_means,
         "preview": preview_df.to_dict(orient="records"),
         "applied_role": role
@@ -319,14 +349,14 @@ async def analyze_database_query(
     high_finance_keywords = ["profit", "margin", "revenue", "supplier_cost", "net_profit", "ebitda"]
     infra_tech_keywords = ["latency", "uptime", "server", "ip_address", "error_rate", "db_cluster"]
 
-    cols_lower = {c: c.lower() for c in df.columns}
+    cols_lower = {str(c).lower(): c for c in df.columns}
 
     # -------------------------------------------------------------
     # 1. ROW-LEVEL SECURITY (RLS)
     # -------------------------------------------------------------
     filter_col = None
     for c in df.columns:
-        if c.lower() in ["store_location", "region", "desk", "operational_unit", "department"]:
+        if str(c).lower() in ["store_location", "region", "desk", "operational_unit", "department"]:
             filter_col = c
             break
 
@@ -348,17 +378,17 @@ async def analyze_database_query(
     if role == "Chairman":
         pass
     elif role == "Chief Financial Officer (CFO)":
-        df = df[[c for c, cl in cols_lower.items() if not any(k in cl for k in infra_tech_keywords)]]
+        df = df[[orig for low, orig in cols_lower.items() if not any(k in low for k in infra_tech_keywords)]]
     elif role == "Chief Technology Officer (CTO)":
-        df = df[[c for c, cl in cols_lower.items() if not any(k in cl for k in compensation_keywords + ["net_profit", "ebitda"])]]
+        df = df[[orig for low, orig in cols_lower.items() if not any(k in low for k in compensation_keywords + ["net_profit", "ebitda"])]]
     elif role == "Chief Information Officer (CIO)":
-        df = df[[c for c, cl in cols_lower.items() if not any(k in cl for k in pii_keywords + ["bonus"])]]
+        df = df[[orig for low, orig in cols_lower.items() if not any(k in low for k in pii_keywords + ["bonus"])]]
     elif role == "Relationship Manager (RM)":
         restricted = compensation_keywords + ["supplier_cost", "maintenance_cost", "operational_cost", "expense_ratio"]
-        df = df[[c for c, cl in cols_lower.items() if not any(k in cl for k in restricted)]]
+        df = df[[orig for low, orig in cols_lower.items() if not any(k in low for k in restricted)]]
     elif role == "Retail Officer":
         restricted = high_finance_keywords + compensation_keywords + ["volatility", "aum"]
-        df = df[[c for c, cl in cols_lower.items() if not any(k in cl for k in restricted)]]
+        df = df[[orig for low, orig in cols_lower.items() if not any(k in low for k in restricted)]]
 
     # Clean numeric representations
     for col in df.columns:
@@ -371,7 +401,7 @@ async def analyze_database_query(
     # Calculate aggregations
     numeric_df = df.select_dtypes(include=[np.number])
     numeric_means = {
-        col: round(float(numeric_df[col].mean()), 2)
+        str(col): round(float(numeric_df[col].mean()), 2)
         for col in numeric_df.columns
         if pd.notnull(numeric_df[col].mean())
     }
@@ -380,7 +410,7 @@ async def analyze_database_query(
         "filename": f"{req.engine_type}://LiveStream",
         "total_rows": int(len(df)),
         "total_columns": int(len(df.columns)),
-        "columns": df.columns.tolist(),
+        "columns": [str(c) for c in df.columns.tolist()],
         "numeric_means": numeric_means,
         "preview": df.head(5).replace({np.nan: None}).to_dict(orient="records"),
         "applied_role": role
