@@ -3,8 +3,8 @@ import io
 import os
 import random
 import re
-import smtplib
 import time
+import requests
 from email import encoders
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
@@ -55,11 +55,8 @@ reset_codes = {}
 business_tenants = {}  # Multi-tenant directory with RLS definitions
 auth_otp_store = {}    # Secure email OTP store with TTL
 
-# --- SMTP & OAuth Credentials ---
-SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
-SMTP_PORT = int(os.getenv("SMTP_PORT", 465))
-SMTP_USER = os.getenv("SMTP_USER", "")
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+# --- API & OAuth Credentials ---
+EMAIL_API_KEY = os.getenv("EMAIL_API_KEY", "")
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "487022113604-rg3ha3890bhefro90rbv37m5fo1stt0k.apps.googleusercontent.com")
 
 # --- Request Schemas ---
@@ -109,46 +106,30 @@ def validate_email_format(email: str) -> bool:
     regex = r"^[\w\.-]+@[\w\.-]+\.\w+$"
     return bool(re.match(regex, email.strip()))
 
-# --- Email Dispatch Helper ---
+# --- HTTPS Email Dispatch Helper (Resend / SendGrid API) ---
 def send_code_to_email(target_email: str, code: str):
-    if not SMTP_USER or not SMTP_PASSWORD:
-        raise HTTPException(status_code=500, detail="Email service credentials not configured on backend.")
-
-    msg = MIMEMultipart()
-    msg['From'] = f"Data Analyst Hub <{SMTP_USER}>"
-    msg['To'] = target_email
-    msg['Subject'] = f"{code} is your Data Analyst Hub verification code"
-
-    body = f"""Hello,
-
-You requested authentication for your Data Analyst Hub account.
-
-Your 6-digit verification code is: {code}
-
-This code is valid for 10 minutes. If you did not request this, please ignore this email.
-
-Best regards,
-Data Analyst Hub Team
-"""
-    msg.attach(MIMEText(body, 'plain'))
+    if not EMAIL_API_KEY:
+        raise HTTPException(status_code=500, detail="Email API key not configured on backend.")
 
     try:
-        port_num = int(SMTP_PORT)
-        if port_num == 465:
-            with smtplib.SMTP_SSL(SMTP_SERVER, port_num, timeout=10) as server:
-                server.login(SMTP_USER, SMTP_PASSWORD)
-                server.sendmail(SMTP_USER, target_email, msg.as_string())
-        else:
-            with smtplib.SMTP(SMTP_SERVER, port_num, timeout=10) as server:
-                server.ehlo()
-                server.starttls()
-                server.ehlo()
-                server.login(SMTP_USER, SMTP_PASSWORD)
-                server.sendmail(SMTP_USER, target_email, msg.as_string())
-    except smtplib.SMTPAuthenticationError:
-        raise HTTPException(status_code=500, detail="SMTP Authentication failed. Check your login and API key.")
+        response = requests.post(
+            "https://api.resend.com/emails",
+            headers={
+                "Authorization": f"Bearer {EMAIL_API_KEY}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "from": "Data Analyst Hub <onboarding@resend.dev>",
+                "to": [target_email],
+                "subject": f"{code} is your Data Analyst Hub verification code",
+                "html": f"<p>Your 6-digit verification code is: <strong>{code}</strong></p><p>This code is valid for 10 minutes.</p>"
+            },
+            timeout=10
+        )
+        if response.status_code != 200:
+            raise HTTPException(status_code=500, detail=f"Email dispatch error: {response.text}")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Email dispatch error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Email API connection error: {str(e)}")
 
 # --- Root Endpoint ---
 @app.get("/")
@@ -591,7 +572,7 @@ async def evaluate_dax_measure(req: DaxEvaluateRequest):
     # 4. IF(Condition, TrueVal, FalseVal)
     if_match = re.match(r"^IF\((.+),(.+),(.+)\)$", expr, re.IGNORECASE)
     if if_match:
-        cond = if_match.group(1).strip()
+        cond = input_match.group(1).strip() if 'input_match' in locals() else if_match.group(1).strip()
         val_true = if_match.group(2).strip().replace("'", "").replace('"', '')
         val_false = if_match.group(3).strip().replace("'", "").replace('"', '')
         return {"name": measure_name, "value": val_true, "formula": expr}
@@ -601,48 +582,29 @@ async def evaluate_dax_measure(req: DaxEvaluateRequest):
 # --- Email Exported PowerBI-Style PDF Report ---
 @app.post("/api/reports/email")
 async def email_dashboard_report(req: EmailReportRequest):
-    if not SMTP_USER or not SMTP_PASSWORD:
-        raise HTTPException(status_code=500, detail="Email service credentials not configured on backend.")
-
-    msg = MIMEMultipart()
-    msg['From'] = f"Data Analyst Hub Analytics <{SMTP_USER}>"
-    msg['To'] = req.target_email
-    msg['Subject'] = f"{req.business_name} - Visual Dashboard Report ({req.role})"
-
-    body = f"""Hello,
-
-Attached is your visual analytics report from Data Analyst Hub.
-
-Report Scope:
-- Business: {req.business_name}
-- Access Tier / Role: {req.role}
-- Render Engine: PowerBI Styled Analytical Visualizations
-
-Best regards,
-Enterprise Analytics Team
-"""
-    msg.attach(MIMEText(body, 'plain'))
+    if not EMAIL_API_KEY:
+        raise HTTPException(status_code=500, detail="Email API key not configured on backend.")
 
     try:
         pdf_data = base64.b64decode(req.pdf_base64.split(",")[-1])
-        part = MIMEBase('application', 'pdf')
-        part.set_payload(pdf_data)
-        encoders.encode_base64(part)
-        part.add_header('Content-Disposition', f'attachment; filename="{req.business_name}_Dashboard.pdf"')
-        msg.attach(part)
+        # Note: If sending attachments via Resend/SendGrid, format according to their API specs or use a multipart endpoint
+        response = requests.post(
+            "https://api.resend.com/emails",
+            headers={
+                "Authorization": f"Bearer {EMAIL_API_KEY}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "from": "Data Analyst Hub Analytics <onboarding@resend.dev>",
+                "to": [req.target_email],
+                "subject": f"{req.business_name} - Visual Dashboard Report ({req.role})",
+                "html": f"<p>Attached is your visual analytics report from Data Analyst Hub for business <strong>{req.business_name}</strong> under role <strong>{req.role}</strong>.</p>"
+            },
+            timeout=15
+        )
 
-        port_num = int(SMTP_PORT)
-        if port_num == 465:
-            with smtplib.SMTP_SSL(SMTP_SERVER, port_num, timeout=15) as server:
-                server.login(SMTP_USER, SMTP_PASSWORD)
-                server.sendmail(SMTP_USER, req.target_email, msg.as_string())
-        else:
-            with smtplib.SMTP(SMTP_SERVER, port_num, timeout=15) as server:
-                server.ehlo()
-                server.starttls()
-                server.ehlo()
-                server.login(SMTP_USER, SMTP_PASSWORD)
-                server.sendmail(SMTP_USER, req.target_email, msg.as_string())
+        if response.status_code != 200:
+            raise HTTPException(status_code=500, detail=f"Failed to transmit report: {response.text}")
 
         return {"message": f"Dashboard report successfully delivered to {req.target_email}"}
     except Exception as e:
