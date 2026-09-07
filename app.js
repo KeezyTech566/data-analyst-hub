@@ -47,6 +47,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const mainDashboard = document.getElementById('mainDashboard');
   const uploadSection = document.getElementById('uploadSection');
   const metricsSection = document.getElementById('metricsSection');
+  const transformSection = document.getElementById('transformSection');
+  const transformMsg = document.getElementById('transformMsg');
 
   // Navigation & Auth Buttons
   const heroCreateAccountBtn = document.getElementById('heroCreateAccountBtn');
@@ -159,6 +161,7 @@ document.addEventListener('DOMContentLoaded', () => {
         renderTable(data.columns, data.preview);
 
         uploadSection.classList.add('hidden');
+        if (transformSection) transformSection.classList.remove('hidden');
         metricsSection.classList.remove('hidden');
       } catch (err) {
         alert(err.message);
@@ -166,6 +169,63 @@ document.addEventListener('DOMContentLoaded', () => {
         if (loader) loader.classList.add('hidden');
       }
     });
+  }
+
+  // --- Data Transformation Studio Event Handlers ---
+  async function applyTransformation(actionType, successMessage) {
+    if (activeDatasetContext.preview.length === 0) {
+      alert("No active dataset loaded to transform.");
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/api/transform/apply`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: actionType,
+          dataset_preview: activeDatasetContext.preview,
+          columns: activeDatasetContext.columns
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Transformation failed.");
+
+      // Update active dataset context cache
+      activeDatasetContext.columns = data.columns || [];
+      activeDatasetContext.preview = data.preview || [];
+
+      renderTable(data.columns, data.preview);
+      
+      if (transformMsg) {
+        transformMsg.textContent = successMessage;
+        transformMsg.classList.remove('hidden');
+        setTimeout(() => transformMsg.classList.add('hidden'), 3000);
+      }
+    } catch (err) {
+      alert(`Transformation Error: ${err.message}`);
+    }
+  }
+
+  const btnDropNulls = document.getElementById('btnDropNulls');
+  if (btnDropNulls) {
+    btnDropNulls.addEventListener('click', () => applyTransformation('drop_nulls', 'Null rows successfully removed!'));
+  }
+
+  const btnDropDuplicates = document.getElementById('btnDropDuplicates');
+  if (btnDropDuplicates) {
+    btnDropDuplicates.addEventListener('click', () => applyTransformation('drop_duplicates', 'Duplicate records successfully stripped!'));
+  }
+
+  const btnStandardizeDates = document.getElementById('btnStandardizeDates');
+  if (btnStandardizeDates) {
+    btnStandardizeDates.addEventListener('click', () => applyTransformation('standardize_dates', 'Date fields standardized to YYYY-MM-DD!'));
+  }
+
+  const btnUppercase = document.getElementById('btnUppercase');
+  if (btnUppercase) {
+    btnUppercase.addEventListener('click', () => applyTransformation('uppercase_text', 'Text attributes converted to uppercase!'));
   }
 
   // --- DAX Measure Calculation & Dynamic Card Generation ---
@@ -807,6 +867,7 @@ document.addEventListener('DOMContentLoaded', () => {
       renderTable(data.columns, data.preview);
 
       uploadSection.classList.add('hidden');
+      if (transformSection) transformSection.classList.remove('hidden');
       metricsSection.classList.remove('hidden');
     } catch (err) {
       alert(err.message);
@@ -832,6 +893,7 @@ document.addEventListener('DOMContentLoaded', () => {
       fileInput.value = '';
       activeCachedFile = null;
       activeDatasetContext = { columns: [], preview: [] };
+      if (transformSection) transformSection.classList.add('hidden');
       metricsSection.classList.add('hidden');
       uploadSection.classList.remove('hidden');
     });
