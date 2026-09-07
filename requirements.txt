@@ -10,3 +10,4 @@ openpyxl
 xlrd
 pyarrow
 fastparquet
+google-auth
