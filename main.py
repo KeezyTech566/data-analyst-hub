@@ -102,6 +102,11 @@ class VerifyOtpRequest(BaseModel):
     email: str
     code: str
 
+class TransformRequest(BaseModel):
+    dataset_preview: list[dict]
+    columns: list[str]
+    action: str  # options: "drop_nulls", "drop_duplicates", "standardize_dates", "uppercase_text"
+
 def validate_email_format(email: str) -> bool:
     regex = r"^[\w\.-]+@[\w\.-]+\.\w+$"
     return bool(re.match(regex, email.strip()))
@@ -405,6 +410,38 @@ async def analyze_database_query(
         "applied_role": role
     }
 
+# --- Data Transformation Endpoint ---
+@app.post("/api/transform/apply")
+async def apply_data_transformation(req: TransformRequest):
+    df = pd.DataFrame(req.dataset_preview)
+    if df.empty:
+        raise HTTPException(status_code=400, detail="No active dataset available for transformation.")
+
+    try:
+        if req.action == "drop_nulls":
+            df = df.dropna()
+        elif req.action == "drop_duplicates":
+            df = df.drop_duplicates()
+        elif req.action == "standardize_dates":
+            for col in df.columns:
+                if "date" in col.lower() or "time" in col.lower() or df[col].dtype == object:
+                    converted_dates = pd.to_datetime(df[col], errors="coerce")
+                    if converted_dates.notnull().sum() > (0.3 * len(df)):
+                        df[col] = converted_dates.dt.strftime("%Y-%m-%d")
+        elif req.action == "uppercase_text":
+            for col in df.select_dtypes(include=[object]).columns:
+                df[col] = df[col].astype(str).str.upper()
+        else:
+            raise HTTPException(status_code=400, detail="Unsupported transformation action.")
+
+        return {
+            "columns": [str(c) for c in df.columns.tolist()],
+            "total_rows": int(len(df)),
+            "preview": df.replace({np.nan: None}).to_dict(orient="records")
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Transformation error: {str(e)}")
+
 # --- Google OAuth Token Verification Endpoint ---
 @app.post("/api/auth/google-sso")
 async def verify_google_sso(payload: GoogleTokenPayload):
@@ -572,7 +609,7 @@ async def evaluate_dax_measure(req: DaxEvaluateRequest):
     # 4. IF(Condition, TrueVal, FalseVal)
     if_match = re.match(r"^IF\((.+),(.+),(.+)\)$", expr, re.IGNORECASE)
     if if_match:
-        cond = input_match.group(1).strip() if 'input_match' in locals() else if_match.group(1).strip()
+        cond = if_match.group(1).strip()
         val_true = if_match.group(2).strip().replace("'", "").replace('"', '')
         val_false = if_match.group(3).strip().replace("'", "").replace('"', '')
         return {"name": measure_name, "value": val_true, "formula": expr}
@@ -586,8 +623,6 @@ async def email_dashboard_report(req: EmailReportRequest):
         raise HTTPException(status_code=500, detail="Email API key not configured on backend.")
 
     try:
-        pdf_data = base64.b64decode(req.pdf_base64.split(",")[-1])
-        # Note: If sending attachments via Resend/SendGrid, format according to their API specs or use a multipart endpoint
         response = requests.post(
             "https://api.resend.com/emails",
             headers={
