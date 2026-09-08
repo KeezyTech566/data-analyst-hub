@@ -192,6 +192,23 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // --- View Switches & Back Navigation ---
+  if (switchToRegisterBtn) {
+    switchToRegisterBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (loginSection) loginSection.classList.add('hidden');
+      if (registerSection) registerSection.classList.remove('hidden');
+    });
+  }
+
+  if (switchToLoginBtn) {
+    switchToLoginBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (registerSection) registerSection.classList.add('hidden');
+      if (loginSection) loginSection.classList.remove('hidden');
+    });
+  }
+
   if (registerForm) {
     registerForm.addEventListener('submit', (e) => {
       e.preventDefault();
