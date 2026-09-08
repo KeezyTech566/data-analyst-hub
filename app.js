@@ -181,30 +181,104 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // --- Project Showcase Modal Handlers ---
-  window.openProjectModal = function(title, desc, tags) {
+  // --- Project Showcase Modal & Interactive Dashboard Simulation ---
+  let modalChartInstance = null;
+
+  window.openProjectModal = function(projectKey) {
     const modal = document.getElementById('projectModal');
     const titleEl = document.getElementById('modalProjectTitle');
     const descEl = document.getElementById('modalProjectDesc');
-    
+    const kpi1Lbl = document.getElementById('kpi1Label');
+    const kpi1Val = document.getElementById('kpi1Val');
+    const kpi2Lbl = document.getElementById('kpi2Label');
+    const kpi2Val = document.getElementById('kpi2Val');
+
+    let title = "";
+    let desc = "";
+    let chartData = { labels: [], values: [] };
+
+    if (projectKey === 'banking') {
+      title = "Banking Profitability Analytics";
+      desc = "Management dashboard featuring dynamic currency toggles (NGN/USD) using DAX SWITCH measures, Star Schema data modeling, and Row-Level Security (RLS).";
+      if (kpi1Lbl) kpi1Lbl.textContent = "Net Interest Margin";
+      if (kpi1Val) kpi1Val.textContent = "₦482.6M";
+      if (kpi2Lbl) kpi2Lbl.textContent = "ROE Ratio";
+      if (kpi2Val) kpi2Val.textContent = "24.8%";
+      chartData = { labels: ['Q1 Retail', 'Q2 Corporate', 'Q3 Treasury', 'Q4 Investment'], values: [120, 190, 150, 240] };
+    } else if (projectKey === 'transport') {
+      title = "Transport Operations & HR Dashboard";
+      desc = "Driver administration and headcount analytics tracking availability, retention metrics, and operational efficiency through custom wireframe layouts.";
+      if (kpi1Lbl) kpi1Lbl.textContent = "Active Fleet Drivers";
+      if (kpi1Val) kpi1Val.textContent = "1,420";
+      if (kpi2Lbl) kpi2Lbl.textContent = "Driver Retention Rate";
+      if (kpi2Val) kpi2Val.textContent = "92.4%";
+      chartData = { labels: ['Lagos Hub', 'Abuja Hub', 'Port Harcourt', 'Kano Hub'], values: [450, 380, 310, 280] };
+    } else if (projectKey === 'fraud') {
+      title = "Automated Fraud Detection Pipeline";
+      desc = "Three-layer real-time monitoring framework integrating Power Automate HTTP webhooks, Power Service REST APIs, and PowerShell payloads.";
+      if (kpi1Lbl) kpi1Lbl.textContent = "Intercepted Anomalies";
+      if (kpi1Val) kpi1Val.textContent = "384 Transactions";
+      if (kpi2Lbl) kpi2Lbl.textContent = "Pipeline Latency";
+      if (kpi2Val) kpi2Val.textContent = "140ms";
+      chartData = { labels: ['Node Alpha', 'Node Beta', 'Gateway Gamma', 'Secure Vault'], values: [12, 5, 28, 3] };
+    }
+
     if (titleEl) titleEl.textContent = title;
     if (descEl) descEl.textContent = desc;
-    
+
     if (modal) {
       modal.classList.remove('hidden');
       modal.style.display = 'flex';
     }
+
+    // Render simulated chart inside the modal preview canvas
+    setTimeout(() => {
+      const canvasCtx = document.getElementById('modalCanvas');
+      if (canvasCtx) {
+        if (modalChartInstance) {
+          modalChartInstance.destroy();
+        }
+        modalChartInstance = new Chart(canvasCtx.getContext('2d'), {
+          type: 'bar',
+          data: {
+            labels: chartData.labels,
+            datasets: [{
+              label: 'Performance Indicator',
+              data: chartData.values,
+              backgroundColor: '#38bdf8',
+              borderRadius: 6
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } },
+              x: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }
+            },
+            plugins: { legend: { display: false } }
+          }
+        });
+      }
+    }, 50);
   };
 
   const closeProjectModalBtn = document.getElementById('closeProjectModalBtn');
+  const closeProjectModalFooterBtn = document.getElementById('closeProjectModalFooterBtn');
   const projectModal = document.getElementById('projectModal');
 
-  if (closeProjectModalBtn && projectModal) {
-    closeProjectModalBtn.addEventListener('click', () => {
-      projectModal.classList.add('hidden');
-      projectModal.style.display = 'none';
-    });
-  }
+  [closeProjectModalBtn, closeProjectModalFooterBtn].forEach(btn => {
+    if (btn && projectModal) {
+      btn.addEventListener('click', () => {
+        projectModal.classList.add('hidden');
+        projectModal.style.display = 'none';
+        if (modalChartInstance) {
+          modalChartInstance.destroy();
+          modalChartInstance = null;
+        }
+      });
+    }
+  });
 
   // --- Studio Tab Navigation ---
   const navTabIngest = document.getElementById('navTabIngest');
