@@ -76,22 +76,26 @@ document.addEventListener('DOMContentLoaded', () => {
   if (heroWatchDemoBtn && demoModal) {
     heroWatchDemoBtn.addEventListener('click', () => {
       demoModal.classList.remove('hidden');
+      demoModal.style.display = 'flex';
     });
   }
   if (closeDemoModalBtn && demoModal) {
     closeDemoModalBtn.addEventListener('click', () => {
       demoModal.classList.add('hidden');
+      demoModal.style.display = 'none';
     });
   }
 
   if (heroRequestDemoBtn && requestDemoModal) {
     heroRequestDemoBtn.addEventListener('click', () => {
       requestDemoModal.classList.remove('hidden');
+      requestDemoModal.style.display = 'flex';
     });
   }
   if (closeRequestDemoModalBtn && requestDemoModal) {
     closeRequestDemoModalBtn.addEventListener('click', () => {
       requestDemoModal.classList.add('hidden');
+      requestDemoModal.style.display = 'none';
       if (requestDemoSuccess) requestDemoSuccess.classList.add('hidden');
     });
   }
@@ -104,6 +108,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => {
           requestDemoForm.reset();
           requestDemoModal.classList.add('hidden');
+          requestDemoModal.style.display = 'none';
           requestDemoSuccess.classList.add('hidden');
         }, 1500);
       }
