@@ -78,7 +78,50 @@ GROUP BY CategoryName;</textarea>
 
   <script>
     function executeSQL() {
-      alert("T-SQL Query executed successfully against SQL Server instance. Rendering 2 rows affected.");
+      const query = document.getElementById('sqlQueryInput').value.trim().toUpperCase();
+      const thead = document.querySelector('table thead tr');
+      const tbody = document.getElementById('resultBody');
+      
+      if (query.includes("JOIN DIMCUSTOMER")) {
+        thead.innerHTML = `
+          <th style="padding: 0.75rem;">TransactionID</th>
+          <th style="padding: 0.75rem;">CustomerName</th>
+          <th style="padding: 0.75rem;">TransactionAmount (₦)</th>
+          <th style="padding: 0.75rem;">CategoryName</th>
+        `;
+        tbody.innerHTML = `
+          <tr>
+            <td style="padding: 0.75rem; border-bottom: 1px solid #1e293b;">TXN-1001</td>
+            <td style="padding: 0.75rem; border-bottom: 1px solid #1e293b; color: #38bdf8;">Zenith Logistics Corp</td>
+            <td style="padding: 0.75rem; border-bottom: 1px solid #1e293b;">1,240,000</td>
+            <td style="padding: 0.75rem; border-bottom: 1px solid #1e293b;">Enterprise Logistics</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.75rem; border-bottom: 1px solid #1e293b;">TXN-1002</td>
+            <td style="padding: 0.75rem; border-bottom: 1px solid #1e293b; color: #38bdf8;">Lagos Retail Hub</td>
+            <td style="padding: 0.75rem; border-bottom: 1px solid #1e293b;">450,000</td>
+            <td style="padding: 0.75rem; border-bottom: 1px solid #1e293b;">Retail Inventory</td>
+          </tr>
+        `;
+      } else {
+        thead.innerHTML = `
+          <th style="padding: 0.75rem;">CategoryName</th>
+          <th style="padding: 0.75rem;">TotalRevenue (₦)</th>
+          <th style="padding: 0.75rem;">Tier</th>
+        `;
+        tbody.innerHTML = `
+          <tr>
+            <td style="padding: 0.75rem; border-bottom: 1px solid #1e293b;">Enterprise Logistics</td>
+            <td style="padding: 0.75rem; border-bottom: 1px solid #1e293b;">1,240,000</td>
+            <td style="padding: 0.75rem; border-bottom: 1px solid #1e293b; color: #34d399;">High Value</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.75rem; border-bottom: 1px solid #1e293b;">Retail Inventory</td>
+            <td style="padding: 0.75rem; border-bottom: 1px solid #1e293b;">450,000</td>
+            <td style="padding: 0.75rem; border-bottom: 1px solid #1e293b; color: #818cf8;">Standard</td>
+          </tr>
+        `;
+      }
     }
   </script>
 </body>
