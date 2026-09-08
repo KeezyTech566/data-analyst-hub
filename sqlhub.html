@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SQL Server & T-SQL Execution Studio</title>
+</head>
+<body style="background: #0b0f19; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 2rem;">
+  
+  <div style="max-width: 1300px; margin: 0 auto;">
+    <header style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1e293b; padding-bottom: 1rem; margin-bottom: 2rem;">
+      <div>
+        <h1 style="font-size: 1.75rem; margin: 0 0 0.25rem 0; color: #38bdf8;">T-SQL Management Studio</h1>
+        <p style="color: #94a3b8; font-size: 0.9rem; margin: 0;">Server Instance: SQL-SERVER-PROD \ Database: EnterpriseDW</p>
+      </div>
+      <a href="index.html" style="background: #1e293b; color: #f8fafc; text-decoration: none; padding: 0.6rem 1.25rem; border-radius: 6px; font-size: 0.85rem; border: 1px solid #334155;">← Back to Hub</a>
+    </header>
+
+    <!-- Query Editor Workspace -->
+    <div style="display: grid; grid-template-columns: 1fr 300px; gap: 1.5rem; margin-bottom: 2rem;">
+      
+      <!-- Left: Editor & Results -->
+      <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+        <div style="background: #0f172a; border: 1px solid #1e293b; padding: 1.5rem; border-radius: 8px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+            <label style="font-size: 0.85rem; font-weight: 600; color: #38bdf8;">Query Console (T-SQL)</label>
+            <button onclick="executeSQL()" style="background: #38bdf8; color: #0b0f19; border: none; padding: 0.4rem 1rem; border-radius: 4px; font-weight: 700; cursor: pointer; font-size: 0.8rem;">▶ Execute (F5)</button>
+          </div>
+          <textarea id="sqlQueryInput" rows="6" style="width: 100%; background: #1e293b; border: 1px solid #334155; color: #38bdf8; font-family: monospace; padding: 0.75rem; border-radius: 6px; font-size: 0.9rem; box-sizing: border-box;">SELECT 
+    CategoryName, 
+    SUM(TransactionAmount) AS TotalRevenue,
+    CASE WHEN SUM(TransactionAmount) > 500000 THEN 'High Value' ELSE 'Standard' END AS Tier
+FROM FactTransactions
+GROUP BY CategoryName;</textarea>
+        </div>
+
+        <!-- Execution Results Grid -->
+        <div style="background: #0f172a; border: 1px solid #1e293b; padding: 1.5rem; border-radius: 8px; overflow-x: auto;">
+          <h3 style="font-size: 1rem; color: #f8fafc; margin-top: 0; margin-bottom: 1rem;">Execution Results</h3>
+          <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.88rem;">
+            <thead>
+              <tr style="background: #1e293b; color: #38bdf8;">
+                <th style="padding: 0.75rem;">CategoryName</th>
+                <th style="padding: 0.75rem;">TotalRevenue (₦)</th>
+                <th style="padding: 0.75rem;">Tier</th>
+              </tr>
+            </thead>
+            <tbody id="resultBody" style="color: #94a3b8;">
+              <tr>
+                <td style="padding: 0.75rem; border-bottom: 1px solid #1e293b;">Enterprise Logistics</td>
+                <td style="padding: 0.75rem; border-bottom: 1px solid #1e293b;">1,240,000</td>
+                <td style="padding: 0.75rem; border-bottom: 1px solid #1e293b; color: #34d399;">High Value</td>
+              </tr>
+              <tr>
+                <td style="padding: 0.75rem; border-bottom: 1px solid #1e293b;">Retail Inventory</td>
+                <td style="padding: 0.75rem; border-bottom: 1px solid #1e293b;">450,000</td>
+                <td style="padding: 0.75rem; border-bottom: 1px solid #1e293b; color: #818cf8;">Standard</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Right: Schema Database Explorer -->
+      <div style="background: #0f172a; border: 1px solid #1e293b; padding: 1.5rem; border-radius: 8px; height: fit-content;">
+        <h3 style="font-size: 1rem; color: #f8fafc; margin-top: 0; margin-bottom: 1rem;">Object Explorer</h3>
+        <ul style="list-style: none; padding: 0; margin: 0; font-size: 0.85rem; color: #94a3b8; display: flex; flex-direction: column; gap: 0.5rem;">
+          <li>📁 <strong>Tables (Star Schema)</strong></li>
+          <li style="padding-left: 1rem; color: #38bdf8;">📄 FactTransactions</li>
+          <li style="padding-left: 1rem; color: #38bdf8;">📄 DimCustomer</li>
+          <li style="padding-left: 1rem; color: #38bdf8;">📄 DimDateHierarchy</li>
+          <li style="padding-left: 1rem; color: #38bdf8;">📄 DimStoreLocation</li>
+        </ul>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    function executeSQL() {
+      alert("T-SQL Query executed successfully against SQL Server instance. Rendering 2 rows affected.");
+    }
+  </script>
+</body>
+</html>
