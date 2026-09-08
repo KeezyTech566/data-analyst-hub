@@ -208,21 +208,21 @@
   </div>
 
   <!-- Demo Video Modal Overlay -->
-  <div id="demoModal" class="auth-overlay hidden">
-    <div class="auth-card" style="max-width: 600px; text-align: center;">
+  <div id="demoModal" class="auth-overlay hidden" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center;">
+    <div class="auth-card" style="max-width: 600px; text-align: center; background: #0f172a; padding: 2rem; border-radius: 12px; border: 1px solid #1e293b;">
       <h2>Platform Overview Demo</h2>
       <p style="color: #94a3b8; font-size: 0.88rem; margin-bottom: 1.5rem;">See how Data Analyst Hub automates star schema modeling, transformation, and AI forecasting.</p>
       <div style="background: #1e293b; height: 260px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 1.5rem; border: 1px dashed #334155;">
         <span style="font-size: 3rem;">▶️</span>
         <span style="margin-left: 0.75rem; color: #38bdf8; font-weight: 600;">Interactive Demo Video Stream Loading...</span>
       </div>
-      <button type="button" id="closeDemoModalBtn" class="btn-secondary full-width">Close Demo</button>
+      <button type="button" id="closeDemoModalBtn" class="btn-secondary full-width" style="background: #1e293b; color: #f8fafc; border: 1px solid #334155; padding: 0.75rem; border-radius: 6px; cursor: pointer;">Close Demo</button>
     </div>
   </div>
 
   <!-- Request Demo Modal Overlay -->
-  <div id="requestDemoModal" class="auth-overlay hidden">
-    <div class="auth-card" style="max-width: 480px; text-align: left;">
+  <div id="requestDemoModal" class="auth-overlay hidden" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center;">
+    <div class="auth-card" style="max-width: 480px; text-align: left; background: #0f172a; padding: 2rem; border-radius: 12px; border: 1px solid #1e293b;">
       <h2>Request a Live Enterprise Demo</h2>
       <p style="color: #94a3b8; font-size: 0.85rem; margin-bottom: 1.25rem;">Our solutions engineering team will walk you through customized RLS security and database pipelines.</p>
       <form id="requestDemoForm">
@@ -234,9 +234,9 @@
           <label for="demoOrgName">Organization Name</label>
           <input type="text" id="demoOrgName" placeholder="Enterprise Corp" required style="width: 100%; background: #1e293b; border: 1px solid #334155; color: #fff; padding: 0.6rem; border-radius: 6px;">
         </div>
-        <p id="requestDemoSuccess" class="auth-success hidden" style="margin-bottom: 1rem;">Demo request submitted successfully! We will contact you shortly.</p>
-        <button type="submit" class="btn-primary full-width" style="margin-bottom: 0.75rem;">Submit Request</button>
-        <button type="button" id="closeRequestDemoModalBtn" class="btn-secondary full-width">Cancel</button>
+        <p id="requestDemoSuccess" class="auth-success hidden" style="margin-bottom: 1rem; color: #34d399;">Demo request submitted successfully!</p>
+        <button type="submit" class="btn-primary full-width" style="margin-bottom: 0.75rem; background: #38bdf8; color: #0b0f19; border: none; padding: 0.75rem; border-radius: 6px; font-weight: 700; cursor: pointer;">Submit Request</button>
+        <button type="button" id="closeRequestDemoModalBtn" class="btn-secondary full-width" style="background: #1e293b; color: #f8fafc; border: 1px solid #334155; padding: 0.75rem; border-radius: 6px; cursor: pointer;">Cancel</button>
       </form>
     </div>
   </div>
