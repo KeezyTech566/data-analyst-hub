@@ -18,8 +18,8 @@ document.addEventListener('DOMContentLoaded', () => {
   if (userRoleSelect) {
     userRoleSelect.addEventListener('change', (e) => {
       currentRole = e.target.value;
-      if (activeCachedFile) {
-        processCSVAnalysis(activeCachedFile);
+      if (fileInput && fileInput.files && fileInput.files.length > 0) {
+        processMultiTableAnalysis(fileInput.files);
       }
     });
   }
@@ -370,8 +370,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // --- Ingestion & Analysis Engine ---
-  async function processCSVAnalysis(fileObj) {
+  // --- Multi-Table Ingestion & Analysis Engine ---
+  async function processMultiTableAnalysis(filesList) {
     const loader = document.getElementById('loading');
     if (loader) loader.classList.remove('hidden');
 
@@ -379,7 +379,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const cardinality = document.getElementById('cardinalitySelect')?.value || '1_to_many';
 
     const formData = new FormData();
-    formData.append("file", fileObj);
+    for (let i = 0; i < filesList.length; i++) {
+      formData.append("files", filesList[i]);
+    }
     formData.append("architecture", architecture);
     formData.append("cardinality", cardinality);
 
@@ -398,7 +400,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = await res.json();
 
       if (fileNameDisplay) {
-        fileNameDisplay.textContent = `${fileObj.name} [Model: ${architecture.toUpperCase()}]`;
+        const fileNames = Array.from(filesList).map(f => f.name).join(', ');
+        fileNameDisplay.textContent = `[${filesList.length} Tables Loaded: ${fileNames}] Model: ${architecture.toUpperCase()}`;
       }
 
       renderKPIs(data);
@@ -407,7 +410,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       switchTab('dashboard');
     } catch (err) {
-      alert(err.message);
+      alert(`Multi-Table Ingestion Error: ${err.message}`);
     } finally {
       if (loader) loader.classList.add('hidden');
     }
@@ -415,12 +418,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (uploadBtn) {
     uploadBtn.addEventListener('click', () => {
-      if (!fileInput.files[0]) {
-        alert("Please select a valid dataset file.");
+      if (!fileInput.files || fileInput.files.length === 0) {
+        alert("Please select at least one dataset file (Fact or Dimension table).");
         return;
       }
-      activeCachedFile = fileInput.files[0];
-      processCSVAnalysis(activeCachedFile);
+      activeCachedFile = fileInput.files[0]; // cache primary reference
+      processMultiTableAnalysis(fileInput.files);
     });
   }
 
