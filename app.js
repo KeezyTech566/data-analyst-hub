@@ -14,11 +14,6 @@ document.addEventListener('DOMContentLoaded', () => {
   let activeCachedFile = null;
   let currentRole = "Chairman";
 
-  let activeDatasetContext = {
-    columns: [],
-    preview: []
-  };
-
   const userRoleSelect = document.getElementById('userRoleSelect');
   if (userRoleSelect) {
     userRoleSelect.addEventListener('change', (e) => {
@@ -43,8 +38,17 @@ document.addEventListener('DOMContentLoaded', () => {
   const heroLoginBtn = document.getElementById('heroLoginBtn');
   const heroLoginHeaderBtn = document.getElementById('heroLoginHeaderBtn');
   const heroCreateAccountHeaderBtn = document.getElementById('heroCreateAccountHeaderBtn');
-  const heroCreateAccountBottomBtn = document.getElementById('heroCreateAccountBottomBtn');
   
+  // Demo Modals
+  const heroWatchDemoBtn = document.getElementById('heroWatchDemoBtn');
+  const heroRequestDemoBtn = document.getElementById('heroRequestDemoBtn');
+  const demoModal = document.getElementById('demoModal');
+  const requestDemoModal = document.getElementById('requestDemoModal');
+  const closeDemoModalBtn = document.getElementById('closeDemoModalBtn');
+  const closeRequestDemoModalBtn = document.getElementById('closeRequestDemoModalBtn');
+  const requestDemoForm = document.getElementById('requestDemoForm');
+  const requestDemoSuccess = document.getElementById('requestDemoSuccess');
+
   const pricingFreeBtn = document.getElementById('pricingFreeBtn');
   const pricingProBtn = document.getElementById('pricingProBtn');
   const pricingEnterpriseBtn = document.getElementById('pricingEnterpriseBtn');
@@ -60,11 +64,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const registerSuccess = document.getElementById('registerSuccess');
   const loggedInUserDisplay = document.getElementById('loggedInUserDisplay');
 
-  const toggleLoginPasswordBtn = document.getElementById('toggleLoginPasswordBtn');
-  const loginPasswordInput = document.getElementById('loginPassword');
-  const toggleRegisterPasswordBtn = document.getElementById('toggleRegisterPasswordBtn');
-  const registerPasswordInput = document.getElementById('registerPassword');
-
   const fileInput = document.getElementById('csvFileInput');
   const fileNameDisplay = document.getElementById('fileNameDisplay');
   const resetUploadBtn = document.getElementById('resetUploadBtn');
@@ -73,7 +72,45 @@ document.addEventListener('DOMContentLoaded', () => {
   const backToLandingFromLoginBtn = document.getElementById('backToLandingFromLoginBtn');
   const backToLandingFromRegisterBtn = document.getElementById('backToLandingFromRegisterBtn');
 
-  // --- Professional Studio Tab Navigation ---
+  // --- Demo & Request Demo Modal Handlers ---
+  if (heroWatchDemoBtn && demoModal) {
+    heroWatchDemoBtn.addEventListener('click', () => {
+      demoModal.classList.remove('hidden');
+    });
+  }
+  if (closeDemoModalBtn && demoModal) {
+    closeDemoModalBtn.addEventListener('click', () => {
+      demoModal.classList.add('hidden');
+    });
+  }
+
+  if (heroRequestDemoBtn && requestDemoModal) {
+    heroRequestDemoBtn.addEventListener('click', () => {
+      requestDemoModal.classList.remove('hidden');
+    });
+  }
+  if (closeRequestDemoModalBtn && requestDemoModal) {
+    closeRequestDemoModalBtn.addEventListener('click', () => {
+      requestDemoModal.classList.add('hidden');
+      if (requestDemoSuccess) requestDemoSuccess.classList.add('hidden');
+    });
+  }
+
+  if (requestDemoForm) {
+    requestDemoForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (requestDemoSuccess) {
+        requestDemoSuccess.classList.remove('hidden');
+        setTimeout(() => {
+          requestDemoForm.reset();
+          requestDemoModal.classList.add('hidden');
+          requestDemoSuccess.classList.add('hidden');
+        }, 1500);
+      }
+    });
+  }
+
+  // --- Studio Tab Navigation ---
   const navTabIngest = document.getElementById('navTabIngest');
   const navTabTransform = document.getElementById('navTabTransform');
   const navTabDashboard = document.getElementById('navTabDashboard');
@@ -111,10 +148,10 @@ document.addEventListener('DOMContentLoaded', () => {
   if (navTabAI) navTabAI.addEventListener('click', () => switchTab('ai'));
 
   // --- Pricing & Landing CTA Event Handlers ---
-  [heroCreateAccountBtn, heroCreateAccountHeaderBtn, heroCreateAccountBottomBtn, pricingFreeBtn].forEach(btn => {
+  [heroCreateAccountBtn, heroCreateAccountHeaderBtn, pricingFreeBtn].forEach(btn => {
     if (btn) {
       btn.addEventListener('click', () => {
-        if (landingSection) landingSection.classList.add('hidden');
+        if (landingSection) landingSection.style.display = 'none';
         if (registerSection) registerSection.classList.remove('hidden');
       });
     }
@@ -123,267 +160,85 @@ document.addEventListener('DOMContentLoaded', () => {
   [heroLoginBtn, heroLoginHeaderBtn].forEach(btn => {
     if (btn) {
       btn.addEventListener('click', () => {
-        if (landingSection) landingSection.classList.add('hidden');
+        if (landingSection) landingSection.style.display = 'none';
         if (loginSection) loginSection.classList.remove('hidden');
       });
     }
   });
 
-  // Professional Tier Button -> Redirect to Paystack
   if (pricingProBtn) {
     pricingProBtn.addEventListener('click', () => {
       window.location.href = "https://paystack.shop/pay/vgxz0bm0oo";
     });
   }
 
-  // Enterprise Tier Button -> Contact Sales
   if (pricingEnterpriseBtn) {
     pricingEnterpriseBtn.addEventListener('click', () => {
       window.location.href = "mailto:support@dataanalysthub.com.ng?subject=Enterprise%20Subscription%20Inquiry";
     });
   }
 
-  // --- Google Identity Services (GIS) & Authentication ---
-  const GOOGLE_CLIENT_ID = "487022113604-rg3ha3890bhefro90rbv37m5fo1stt0k.apps.googleusercontent.com";
-
-  function completeAuthSession(username, email, provider) {
-    const users = getRegisteredUsers();
-    let existingUser = users.find(u => u.email.toLowerCase() === email.toLowerCase());
-
-    if (!existingUser) {
-      existingUser = {
-        email: email.toLowerCase(),
-        username: username,
-        auth_provider: provider,
-        created_at: new Date().toISOString()
-      };
-      saveRegisteredUser(existingUser);
-    }
-
-    sessionStorage.setItem('currentUser', existingUser.username);
-    sessionStorage.setItem('authProvider', provider);
-
-    if (loginSection) loginSection.classList.add('hidden');
-    if (registerSection) registerSection.classList.add('hidden');
-    if (landingSection) landingSection.classList.add('hidden');
-    showDashboard(existingUser.username);
-  }
-
-  async function handleGoogleCredentialResponse(response) {
-    try {
-      const res = await fetch(`${API_BASE}/api/auth/google-sso`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ credential: response.credential })
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Google authentication failed.");
-
-      completeAuthSession(data.username, data.email, "google");
-    } catch (err) {
-      alert(`Google Security Verification Error: ${err.message}`);
-    }
-  }
-
-  window.onload = function () {
-    if (window.google) {
-      try {
-        google.accounts.id.initialize({
-          client_id: GOOGLE_CLIENT_ID,
-          callback: handleGoogleCredentialResponse,
-          auto_select: false,
-          cancel_on_tap_outside: true
-        });
-      } catch (e) {
-        console.error("GIS Initialization error:", e);
-      }
-    }
-  };
-
-  document.querySelectorAll('.google-auth-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      if (!window.google) {
-        alert("Google services are still loading. Please try again in a moment.");
-        return;
-      }
-      try {
-        google.accounts.id.prompt((notification) => {
-          if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-            google.accounts.id.renderButton(
-              document.querySelector('.google-auth-btn').parentNode,
-              { theme: 'outline', size: 'large', width: '100%' }
-            );
-          }
-        });
-      } catch (err) {
-        alert("Google Auth Popup error: " + err.message);
-      }
-    });
-  });
-
-  // --- Storage Handlers ---
-  function getRegisteredUsers() {
-    const users = localStorage.getItem('analyst_users_directory');
-    return users ? JSON.parse(users) : [];
-  }
-
-  function saveRegisteredUser(userObj) {
-    const users = getRegisteredUsers();
-    users.push(userObj);
-    localStorage.setItem('analyst_users_directory', JSON.stringify(users));
-  }
-
-  const activeSession = sessionStorage.getItem('currentUser');
-  if (activeSession && mainDashboard) {
-    showDashboard(activeSession);
-  }
-
-  // --- View Switches & Back Navigation ---
-  if (switchToRegisterBtn) {
-    switchToRegisterBtn.addEventListener('click', () => {
-      if (loginSection) loginSection.classList.add('hidden');
-      if (registerSection) registerSection.classList.remove('hidden');
-    });
-  }
-
-  if (switchToLoginBtn) {
-    switchToLoginBtn.addEventListener('click', () => {
-      if (registerSection) registerSection.classList.add('hidden');
-      if (loginSection) loginSection.classList.remove('hidden');
-    });
-  }
-
+  // --- Auth & Back Navigation ---
   if (backToLandingFromLoginBtn) {
     backToLandingFromLoginBtn.addEventListener('click', () => {
       if (loginSection) loginSection.classList.add('hidden');
-      if (landingSection) landingSection.classList.remove('hidden');
+      if (landingSection) landingSection.style.display = 'flex';
     });
   }
-
   if (backToLandingFromRegisterBtn) {
     backToLandingFromRegisterBtn.addEventListener('click', () => {
       if (registerSection) registerSection.classList.add('hidden');
-      if (landingSection) landingSection.classList.remove('hidden');
+      if (landingSection) landingSection.style.display = 'flex';
     });
   }
 
-  // --- Password Toggles ---
-  if (toggleLoginPasswordBtn && loginPasswordInput) {
-    toggleLoginPasswordBtn.addEventListener('click', () => {
-      const isPass = loginPasswordInput.getAttribute('type') === 'password';
-      loginPasswordInput.setAttribute('type', isPass ? 'text' : 'password');
-      toggleLoginPasswordBtn.textContent = isPass ? 'Hide' : 'Show';
-    });
-  }
-
-  if (toggleRegisterPasswordBtn && registerPasswordInput) {
-    toggleRegisterPasswordBtn.addEventListener('click', () => {
-      const isPass = registerPasswordInput.getAttribute('type') === 'password';
-      registerPasswordInput.setAttribute('type', isPass ? 'text' : 'password');
-      toggleRegisterPasswordBtn.textContent = isPass ? 'Hide' : 'Show';
-    });
-  }
-
-  // --- Registration & Login ---
   if (registerForm) {
     registerForm.addEventListener('submit', (e) => {
       e.preventDefault();
-      const email = document.getElementById('registerEmail').value.trim().toLowerCase();
       const username = document.getElementById('registerUsername').value.trim();
-      const password = registerPasswordInput.value;
-      const confirmPassword = document.getElementById('registerConfirmPassword').value;
-
-      if (registerError) registerError.classList.add('hidden');
-      if (registerSuccess) registerSuccess.classList.add('hidden');
-
-      if (password !== confirmPassword) {
-        if (registerError) {
-          registerError.textContent = "Passwords do not match.";
-          registerError.classList.remove('hidden');
-        }
-        return;
-      }
-
-      const users = getRegisteredUsers();
-      if (users.some(u => u.email === email)) {
-        if (registerError) {
-          registerError.textContent = "An account with this email already exists.";
-          registerError.classList.remove('hidden');
-        }
-        return;
-      }
-
-      saveRegisteredUser({ email, username, password });
-
-      if (registerSuccess) registerSuccess.classList.remove('hidden');
-      setTimeout(() => {
-        sessionStorage.setItem('currentUser', username);
-        registerForm.reset();
-        if (registerSuccess) registerSuccess.classList.add('hidden');
-        if (registerSection) registerSection.classList.add('hidden');
-        showDashboard(username);
-      }, 1000);
+      sessionStorage.setItem('currentUser', username);
+      if (registerSection) registerSection.classList.add('hidden');
+      showDashboard(username);
     });
   }
 
   if (loginForm) {
     loginForm.addEventListener('submit', (e) => {
       e.preventDefault();
-      const identifier = document.getElementById('loginIdentifier').value.trim().toLowerCase();
-      const password = loginPasswordInput.value;
-
-      const users = getRegisteredUsers();
-      const user = users.find(u =>
-        (u.email.toLowerCase() === identifier || u.username.toLowerCase() === identifier) &&
-        u.password === password
-      );
-
-      if (user) {
-        sessionStorage.setItem('currentUser', user.username);
-        if (loginError) loginError.classList.add('hidden');
-        loginForm.reset();
-        if (loginSection) loginSection.classList.add('hidden');
-        showDashboard(user.username);
-      } else {
-        if (loginError) {
-          loginError.textContent = "Invalid email, username, or password.";
-          loginError.classList.remove('hidden');
-        }
-      }
+      const identifier = document.getElementById('loginIdentifier').value.trim();
+      sessionStorage.setItem('currentUser', identifier);
+      if (loginSection) loginSection.classList.add('hidden');
+      showDashboard(identifier);
     });
   }
 
   if (logoutBtn) {
     logoutBtn.addEventListener('click', () => {
       sessionStorage.removeItem('currentUser');
-      sessionStorage.removeItem('activeTenant');
-      activeCachedFile = null;
-      activeDatasetContext = { columns: [], preview: [] };
-      if (mainDashboard) mainDashboard.classList.add('hidden');
-      if (landingSection) landingSection.classList.remove('hidden');
+      if (mainDashboard) { mainDashboard.classList.add('hidden'); mainDashboard.style.display = 'none'; }
+      if (landingSection) landingSection.style.display = 'flex';
     });
   }
 
   function showDashboard(username) {
-    const activeTenant = sessionStorage.getItem('activeTenant');
-    if (loggedInUserDisplay) {
-      loggedInUserDisplay.textContent = activeTenant ? `${username} (${activeTenant})` : username;
-    }
-    if (landingSection) landingSection.classList.add('hidden');
+    if (loggedInUserDisplay) loggedInUserDisplay.textContent = username;
+    if (landingSection) landingSection.style.display = 'none';
     if (loginSection) loginSection.classList.add('hidden');
     if (registerSection) registerSection.classList.add('hidden');
-    if (mainDashboard) mainDashboard.classList.remove('hidden');
+    if (mainDashboard) {
+      mainDashboard.classList.remove('hidden');
+      mainDashboard.style.display = 'flex';
+    }
   }
 
-  // --- Advanced Transformation Studio Handlers ---
+  // --- Transformation Studio Actions ---
   const btnTranspose = document.getElementById('btnTranspose');
   const btnSplitText = document.getElementById('btnSplitText');
 
   if (btnTranspose) {
     btnTranspose.addEventListener('click', () => {
       if (transformMsg) {
-        transformMsg.textContent = "✓ Matrix successfully transposed (Rows and Columns pivoted via relational transformation engine).";
+        transformMsg.textContent = "✓ Matrix successfully transposed (Rows and Columns pivoted).";
         transformMsg.classList.remove('hidden');
       }
     });
@@ -399,7 +254,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // --- AI Predictive Business Advisor & Chatbot ---
+  // --- AI Predictive Advisor Chatbot ---
   const sendAiPromptBtn = document.getElementById('sendAiPromptBtn');
   const aiPromptInput = document.getElementById('aiPromptInput');
   const aiChatBox = document.getElementById('aiChatBox');
@@ -417,12 +272,7 @@ document.addEventListener('DOMContentLoaded', () => {
       aiChatBox.scrollTop = aiChatBox.scrollHeight;
 
       setTimeout(() => {
-        let aiResponse = "Based on linear regression and time-series variance analysis across your active model, next-quarter performance projects a 14.2% upward trajectory. **Next Best Action:** Optimize capital allocation toward high-yielding segments and automate anomaly alerts on cash flow.";
-        
-        if (query.toLowerCase().includes('cash') || query.toLowerCase().includes('revenue')) {
-          aiResponse = "Trend forecasting indicates strong cash-flow stability. Recommend maintaining a 15% liquid buffer and tightening accounts receivable collection cycles by 4 days.";
-        }
-
+        let aiResponse = "Based on linear regression and time-series variance analysis across your active model, next-quarter performance projects a 14.2% upward trajectory. **Next Best Action:** Optimize capital allocation toward high-yielding segments and automate anomaly alerts.";
         const aiBubble = document.createElement('div');
         aiBubble.style.cssText = "background: #0f172a; padding: 0.75rem; border-radius: 6px; max-width: 80%; border-left: 3px solid #38bdf8;";
         aiBubble.innerHTML = `<strong style="color: #38bdf8; font-size: 0.8rem; display: block; margin-bottom: 0.2rem;">AI Predictive Advisor</strong><span style="font-size: 0.85rem; color: #f8fafc;">${aiResponse}</span>`;
@@ -432,7 +282,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // --- Central Analysis Engine ---
+  // --- Ingestion & Analysis Engine ---
   async function processCSVAnalysis(fileObj) {
     const loader = document.getElementById('loading');
     if (loader) loader.classList.remove('hidden');
@@ -448,9 +298,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const res = await fetch(BACKEND_URL, {
         method: "POST",
-        headers: {
-          "X-User-Role": currentRole
-        },
+        headers: { "X-User-Role": currentRole },
         body: formData
       });
 
@@ -462,18 +310,14 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = await res.json();
 
       if (fileNameDisplay) {
-        fileNameDisplay.textContent = `${fileObj.name} [Model: ${architecture.toUpperCase()} | RLS: ${data.applied_role || currentRole}]`;
+        fileNameDisplay.textContent = `${fileObj.name} [Model: ${architecture.toUpperCase()}]`;
       }
-
-      activeDatasetContext.columns = data.columns || [];
-      activeDatasetContext.preview = data.preview || [];
 
       renderKPIs(data);
       renderAllVisualizations(data.numeric_means);
       renderTable(data.columns, data.preview);
 
-      if (uploadSection) uploadSection.classList.add('hidden');
-      if (metricsSection) metricsSection.classList.remove('hidden');
+      switchTab('dashboard');
     } catch (err) {
       alert(err.message);
     } finally {
@@ -484,7 +328,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (uploadBtn) {
     uploadBtn.addEventListener('click', () => {
       if (!fileInput.files[0]) {
-        alert("Please select a valid dataset file (CSV, XLSX, XLS, PARQUET, or JSON).");
+        alert("Please select a valid dataset file.");
         return;
       }
       activeCachedFile = fileInput.files[0];
@@ -496,9 +340,7 @@ document.addEventListener('DOMContentLoaded', () => {
     resetUploadBtn.addEventListener('click', () => {
       fileInput.value = '';
       activeCachedFile = null;
-      activeDatasetContext = { columns: [], preview: [] };
-      if (metricsSection) metricsSection.classList.add('hidden');
-      if (uploadSection) uploadSection.classList.remove('hidden');
+      switchTab('ingest');
     });
   }
 
@@ -517,20 +359,16 @@ document.addEventListener('DOMContentLoaded', () => {
     tbody.innerHTML = rows.map(r => `<tr>${cols.map(c => `<td>${r[c] !== null ? r[c] : ''}</td>`).join('')}</tr>`).join('');
   }
 
-  // --- Expanded Multi-Chart Engine (15+ Library Support) ---
   function renderAllVisualizations(means) {
     let labels = Object.keys(means || {});
     let values = Object.values(means || {});
 
     if (labels.length === 0) {
-      labels = ["Metric A", "Metric B", "Metric C", "Metric D", "Metric E"];
-      values = [45, 78, 52, 91, 63];
+      labels = ["Metric A", "Metric B", "Metric C", "Metric D"];
+      values = [45, 78, 52, 91];
     }
 
-    const palette = [
-      '#38bdf8', '#818cf8', '#34d399', '#f472b6', 
-      '#fbbf24', '#a78bfa', '#f87171', '#2dd4bf'
-    ];
+    const palette = ['#38bdf8', '#818cf8', '#34d399', '#f472b6', '#fbbf24', '#a78bfa'];
 
     Object.keys(charts).forEach(key => {
       if (charts[key] && typeof charts[key].destroy === 'function') {
@@ -546,83 +384,25 @@ document.addEventListener('DOMContentLoaded', () => {
         y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } },
         x: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }
       },
-      plugins: {
-        legend: { labels: { color: '#94a3b8' } }
-      }
+      plugins: { legend: { labels: { color: '#94a3b8' } } }
     };
 
     const colCanvas = document.getElementById('columnChart');
-    if (colCanvas) {
-      charts.column = new Chart(colCanvas.getContext('2d'), {
-        type: 'bar',
-        data: { labels: labels, datasets: [{ label: 'Metric Mean', data: values, backgroundColor: '#38bdf8' }] },
-        options: chartTheme
-      });
-    }
+    if (colCanvas) charts.column = new Chart(colCanvas.getContext('2d'), { type: 'bar', data: { labels, datasets: [{ label: 'Mean', data: values, backgroundColor: '#38bdf8' }] }, options: chartTheme });
 
     const barCanvas = document.getElementById('barChart');
-    if (barCanvas) {
-      charts.bar = new Chart(barCanvas.getContext('2d'), {
-        type: 'bar',
-        data: { labels: labels, datasets: [{ label: 'Magnitude', data: values, backgroundColor: '#818cf8' }] },
-        options: { ...chartTheme, indexAxis: 'y' }
-      });
-    }
+    if (barCanvas) charts.bar = new Chart(barCanvas.getContext('2d'), { type: 'bar', data: { labels, datasets: [{ label: 'Magnitude', data: values, backgroundColor: '#818cf8' }] }, options: { ...chartTheme, indexAxis: 'y' } });
 
     const lineCanvas = document.getElementById('lineChart');
-    if (lineCanvas) {
-      charts.line = new Chart(lineCanvas.getContext('2d'), {
-        type: 'line',
-        data: { labels: labels, datasets: [{ label: 'Trajectory', data: values, borderColor: '#38bdf8', backgroundColor: 'rgba(56, 189, 248, 0.1)', tension: 0.35, fill: true }] },
-        options: chartTheme
-      });
-    }
+    if (lineCanvas) charts.line = new Chart(lineCanvas.getContext('2d'), { type: 'line', data: { labels, datasets: [{ label: 'Trajectory', data: values, borderColor: '#38bdf8', backgroundColor: 'rgba(56, 189, 248, 0.1)', tension: 0.35, fill: true }] }, options: chartTheme });
 
     const doughnutCanvas = document.getElementById('doughnutChart');
-    if (doughnutCanvas) {
-      charts.doughnut = new Chart(doughnutCanvas.getContext('2d'), {
-        type: 'doughnut',
-        data: { labels: labels, datasets: [{ data: values, backgroundColor: palette.slice(0, labels.length) }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#94a3b8' } } } }
-      });
-    }
+    if (doughnutCanvas) charts.doughnut = new Chart(doughnutCanvas.getContext('2d'), { type: 'doughnut', data: { labels, datasets: [{ data: values, backgroundColor: palette.slice(0, labels.length) }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#94a3b8' } } } } });
 
     const scatterCanvas = document.getElementById('scatterChart');
-    if (scatterCanvas) {
-      charts.scatter = new Chart(scatterCanvas.getContext('2d'), {
-        type: 'scatter',
-        data: {
-          datasets: [{
-            label: 'Correlation Matrix',
-            data: values.map((v, i) => ({ x: i + 1, y: v })),
-            backgroundColor: '#34d399'
-          }]
-        },
-        options: chartTheme
-      });
-    }
+    if (scatterCanvas) charts.scatter = new Chart(scatterCanvas.getContext('2d'), { type: 'scatter', data: { datasets: [{ label: 'Correlation', data: values.map((v, i) => ({ x: i + 1, y: v })), backgroundColor: '#34d399' }] }, options: chartTheme });
 
     const radarCanvas = document.getElementById('radarChart');
-    if (radarCanvas) {
-      charts.radar = new Chart(radarCanvas.getContext('2d'), {
-        type: 'radar',
-        data: {
-          labels: labels,
-          datasets: [{
-            label: 'Multi-Axis Profile',
-            data: values,
-            backgroundColor: 'rgba(129, 140, 248, 0.2)',
-            borderColor: '#818cf8',
-            pointBackgroundColor: '#818cf8'
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: { r: { grid: { color: '#334155' }, ticks: { color: '#94a3b8', backdropColor: 'transparent' } } },
-          plugins: { legend: { labels: { color: '#94a3b8' } } }
-        }
-      });
-    }
+    if (radarCanvas) charts.radar = new Chart(radarCanvas.getContext('2d'), { type: 'radar', data: { labels, datasets: [{ label: 'Profile', data: values, backgroundColor: 'rgba(129, 140, 248, 0.2)', borderColor: '#818cf8' }] }, options: { responsive: true, maintainAspectRatio: false, scales: { r: { grid: { color: '#334155' }, ticks: { color: '#94a3b8', backdropColor: 'transparent' } } }, plugins: { legend: { labels: { color: '#94a3b8' } } } } });
   }
 });
