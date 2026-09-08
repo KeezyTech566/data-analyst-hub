@@ -181,6 +181,31 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // --- Project Showcase Modal Handlers ---
+  window.openProjectModal = function(title, desc, tags) {
+    const modal = document.getElementById('projectModal');
+    const titleEl = document.getElementById('modalProjectTitle');
+    const descEl = document.getElementById('modalProjectDesc');
+    
+    if (titleEl) titleEl.textContent = title;
+    if (descEl) descEl.textContent = desc;
+    
+    if (modal) {
+      modal.classList.remove('hidden');
+      modal.style.display = 'flex';
+    }
+  };
+
+  const closeProjectModalBtn = document.getElementById('closeProjectModalBtn');
+  const projectModal = document.getElementById('projectModal');
+
+  if (closeProjectModalBtn && projectModal) {
+    closeProjectModalBtn.addEventListener('click', () => {
+      projectModal.classList.add('hidden');
+      projectModal.style.display = 'none';
+    });
+  }
+
   // --- Studio Tab Navigation ---
   const navTabIngest = document.getElementById('navTabIngest');
   const navTabTransform = document.getElementById('navTabTransform');
@@ -431,7 +456,7 @@ document.addEventListener('DOMContentLoaded', () => {
         alert("Please select at least one dataset file (Fact or Dimension table).");
         return;
       }
-      activeCachedFile = fileInput.files[0]; // cache primary reference
+      activeCachedFile = fileInput.files[0];
       processMultiTableAnalysis(fileInput.files);
     });
   }
