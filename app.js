@@ -72,6 +72,72 @@ document.addEventListener('DOMContentLoaded', () => {
   const backToLandingFromLoginBtn = document.getElementById('backToLandingFromLoginBtn');
   const backToLandingFromRegisterBtn = document.getElementById('backToLandingFromRegisterBtn');
 
+  // --- Google Identity Services (GIS) & Authentication ---
+  const GOOGLE_CLIENT_ID = "487022113604-rg3ha3890bhefro90rbv37m5fo1stt0k.apps.googleusercontent.com";
+
+  function completeAuthSession(username, email, provider) {
+    sessionStorage.setItem('currentUser', username);
+    sessionStorage.setItem('authProvider', provider);
+
+    if (loginSection) loginSection.classList.add('hidden');
+    if (registerSection) registerSection.classList.add('hidden');
+    if (landingSection) landingSection.style.display = 'flex';
+    showDashboard(username);
+  }
+
+  async function handleGoogleCredentialResponse(response) {
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/google-sso`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ credential: response.credential })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Google authentication failed.");
+
+      completeAuthSession(data.username, data.email, "google");
+    } catch (err) {
+      alert(`Google Security Verification Error: ${err.message}`);
+    }
+  }
+
+  window.onload = function () {
+    if (window.google) {
+      try {
+        google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: handleGoogleCredentialResponse,
+          auto_select: false,
+          cancel_on_tap_outside: true
+        });
+      } catch (e) {
+        console.error("GIS Initialization error:", e);
+      }
+    }
+  };
+
+  document.querySelectorAll('.google-auth-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (!window.google) {
+        alert("Google services are still loading. Please try again in a moment.");
+        return;
+      }
+      try {
+        google.accounts.id.prompt((notification) => {
+          if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+            google.accounts.id.renderButton(
+              document.querySelector('.google-auth-btn').parentNode,
+              { theme: 'outline', size: 'large', width: '100%' }
+            );
+          }
+        });
+      } catch (err) {
+        alert("Google Auth Popup error: " + err.message);
+      }
+    });
+  });
+
   // --- Demo & Request Demo Modal Handlers ---
   if (heroWatchDemoBtn && demoModal) {
     heroWatchDemoBtn.addEventListener('click', () => {
