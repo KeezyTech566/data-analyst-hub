@@ -24,7 +24,7 @@
         <div style="background: #0f172a; border: 1px solid #1e293b; padding: 1.5rem; border-radius: 8px;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
             <label style="font-size: 0.85rem; font-weight: 600; color: #38bdf8;">Query Console (T-SQL)</label>
-            <button onclick="executeSQL()" style="background: #38bdf8; color: #0b0f19; border: none; padding: 0.4rem 1rem; border-radius: 4px; font-weight: 700; cursor: pointer; font-size: 0.8rem;">▶ Execute (F5)</button>
+            <button onclick="executeSQL()" style="background: #38bdf8; color: #0b0f19; border: none; padding: 0.4rem 1rem; border-radius: 4px; font-weight: 700; cursor: pointer; font-size: 0.80rem;">▶ Execute (F5)</button>
           </div>
           <textarea id="sqlQueryInput" rows="6" style="width: 100%; background: #1e293b; border: 1px solid #334155; color: #38bdf8; font-family: monospace; padding: 0.75rem; border-radius: 6px; font-size: 0.9rem; box-sizing: border-box;">SELECT 
     CategoryName, 
@@ -78,11 +78,13 @@ GROUP BY CategoryName;</textarea>
 
   <script>
     function executeSQL() {
-      const query = document.getElementById('sqlQueryInput').value.trim().toUpperCase();
+      const rawQuery = document.getElementById('sqlQueryInput').value.trim();
+      const query = rawQuery.toUpperCase();
       const thead = document.querySelector('table thead tr');
       const tbody = document.getElementById('resultBody');
       
-      if (query.includes("JOIN DIMCUSTOMER")) {
+      // Dynamic parser mimicking SSMS result set generation
+      if (query.includes("JOIN DIMCUSTOMER") || query.includes("JOIN C")) {
         thead.innerHTML = `
           <th style="padding: 0.75rem;">TransactionID</th>
           <th style="padding: 0.75rem;">CustomerName</th>
@@ -101,6 +103,45 @@ GROUP BY CategoryName;</textarea>
             <td style="padding: 0.75rem; border-bottom: 1px solid #1e293b; color: #38bdf8;">Lagos Retail Hub</td>
             <td style="padding: 0.75rem; border-bottom: 1px solid #1e293b;">450,000</td>
             <td style="padding: 0.75rem; border-bottom: 1px solid #1e293b;">Retail Inventory</td>
+          </tr>
+        `;
+      } else if (query.includes("DIMDATEHIERARCHY") || query.includes("MONTHNAME")) {
+        thead.innerHTML = `
+          <th style="padding: 0.75rem;">Year</th>
+          <th style="padding: 0.75rem;">MonthName</th>
+          <th style="padding: 0.75rem;">MonthlyRevenue (₦)</th>
+        `;
+        tbody.innerHTML = `
+          <tr>
+            <td style="padding: 0.75rem; border-bottom: 1px solid #1e293b;">2026</td>
+            <td style="padding: 0.75rem; border-bottom: 1px solid #1e293b; color: #38bdf8;">January</td>
+            <td style="padding: 0.75rem; border-bottom: 1px solid #1e293b;">4,500,000</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.75rem; border-bottom: 1px solid #1e293b;">2026</td>
+            <td style="padding: 0.75rem; border-bottom: 1px solid #1e293b; color: #38bdf8;">February</td>
+            <td style="padding: 0.75rem; border-bottom: 1px solid #1e293b;">5,820,000</td>
+          </tr>
+        `;
+      } else if (query.includes("DIMSTORELOCATION") || query.includes("REGION")) {
+        thead.innerHTML = `
+          <th style="padding: 0.75rem;">Region</th>
+          <th style="padding: 0.75rem;">StoreName</th>
+          <th style="padding: 0.75rem;">TransactionCount</th>
+          <th style="padding: 0.75rem;">RegionalRevenue (₦)</th>
+        `;
+        tbody.innerHTML = `
+          <tr>
+            <td style="padding: 0.75rem; border-bottom: 1px solid #1e293b; color: #38bdf8;">South-West</td>
+            <td style="padding: 0.75rem; border-bottom: 1px solid #1e293b;">Lagos Central Hub</td>
+            <td style="padding: 0.75rem; border-bottom: 1px solid #1e293b;">340</td>
+            <td style="padding: 0.75rem; border-bottom: 1px solid #1e293b;">6,200,000</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.75rem; border-bottom: 1px solid #1e293b; color: #38bdf8;">South-East</td>
+            <td style="padding: 0.75rem; border-bottom: 1px solid #1e293b;">Onitsha Mega Depot</td>
+            <td style="padding: 0.75rem; border-bottom: 1px solid #1e293b;">285</td>
+            <td style="padding: 0.75rem; border-bottom: 1px solid #1e293b;">4,950,000</td>
           </tr>
         `;
       } else {
