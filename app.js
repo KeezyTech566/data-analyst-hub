@@ -380,7 +380,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const formData = new FormData();
     for (let i = 0; i < filesList.length; i++) {
-      formData.append("files", filesList[i]);
+      formData.append("file", filesList[i]);
     }
     formData.append("architecture", architecture);
     formData.append("cardinality", cardinality);
@@ -398,6 +398,8 @@ document.addEventListener('DOMContentLoaded', () => {
         let errorMessage = "Server processing failed.";
         if (typeof data.detail === 'string') {
           errorMessage = data.detail;
+        } else if (Array.isArray(data.detail)) {
+          errorMessage = data.detail.map(err => `${err.loc.join('.')}: ${err.msg}`).join(', ');
         } else if (typeof data.detail === 'object' && data.detail !== null) {
           errorMessage = JSON.stringify(data.detail);
         } else if (data.message) {
