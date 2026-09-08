@@ -392,12 +392,19 @@ document.addEventListener('DOMContentLoaded', () => {
         body: formData
       });
 
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.detail || `Server responded with status ${res.status}`);
-      }
-
       const data = await res.json();
+
+      if (!res.ok) {
+        let errorMessage = "Server processing failed.";
+        if (typeof data.detail === 'string') {
+          errorMessage = data.detail;
+        } else if (typeof data.detail === 'object' && data.detail !== null) {
+          errorMessage = JSON.stringify(data.detail);
+        } else if (data.message) {
+          errorMessage = data.message;
+        }
+        throw new Error(errorMessage);
+      }
 
       if (fileNameDisplay) {
         const fileNames = Array.from(filesList).map(f => f.name).join(', ');
