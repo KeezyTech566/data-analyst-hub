@@ -31,6 +31,7 @@
       <nav style="display: flex; gap: 2rem; align-items: center;">
         <a href="#features" style="color: #94a3b8; text-decoration: none; font-size: 0.9rem; font-weight: 500;">Product</a>
         <a href="#workflow" style="color: #94a3b8; text-decoration: none; font-size: 0.9rem; font-weight: 500;">Solutions</a>
+        <a href="#showcaseSection" style="color: #94a3b8; text-decoration: none; font-size: 0.9rem; font-weight: 500;">Dashboards</a>
         <a href="#pricing" style="color: #94a3b8; text-decoration: none; font-size: 0.9rem; font-weight: 500;">Pricing</a>
         <a href="onboard.html" style="color: #38bdf8; text-decoration: none; font-size: 0.9rem; font-weight: 500;">+ Enterprise Tenant</a>
       </nav>
@@ -91,6 +92,63 @@
       <h2 style="font-size: 2.5rem; font-weight: 800; margin: 0.75rem 0 1rem 0;">From data to delivery. <span style="color: #38bdf8;">All in one flow.</span></h2>
       <p style="color: #94a3b8; max-width: 600px; margin: 0 auto 4rem auto; font-size: 1rem;">Data Analyst Hub connects every part of your analytics workflow.</p>
     </div>
+
+    <!-- Featured Enterprise Dashboards Showcase Section -->
+    <section id="showcaseSection" style="padding: 6rem 5%; max-width: 1100px; margin: 0 auto; text-align: center;">
+      <span style="color: #38bdf8; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;">PROVEN ENTERPRISE WORK</span>
+      <h2 style="font-size: 2.5rem; font-weight: 800; margin: 0.75rem 0 1rem 0;">Explore production-grade <span style="color: #38bdf8;">dashboards & pipelines.</span></h2>
+      <p style="color: #94a3b8; max-width: 600px; margin: 0 auto 4rem auto; font-size: 1rem;">Click any project card to inspect architecture details, DAX measures, and live case studies.</p>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 2rem; text-align: left;">
+        
+        <!-- Project 2: Banking Profitability Reports -->
+        <div class="project-card" style="background: #0f172a; border: 1px solid #1e293b; padding: 2rem; border-radius: 12px; display: flex; flex-direction: column; justify-content: space-between; cursor: pointer; transition: border-color 0.2s;" onclick="openProjectModal('Banking Profitability Analytics', 'Management dashboard featuring dynamic currency toggles (NGN/USD) using DAX SWITCH measures, Star Schema data modeling, and Row-Level Security (RLS).', ['Power BI', 'DAX', 'Star Schema', 'RLS'])">
+          <div>
+            <div style="background: rgba(56, 189, 248, 0.1); width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; margin-bottom: 1rem; border: 1px solid rgba(56, 189, 248, 0.2);">🏦</div>
+            <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 0.5rem; color: #f8fafc;">Banking Profitability Analytics</h3>
+            <p style="font-size: 0.88rem; color: #94a3b8; line-height: 1.5; margin-bottom: 1.5rem;">Management dashboard featuring dynamic currency toggles (NGN/USD) using DAX SWITCH measures, Star Schema data modeling, and Row-Level Security (RLS).</p>
+            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.5rem;">
+              <span style="background: #1e293b; color: #38bdf8; font-size: 0.75rem; padding: 0.2rem 0.6rem; border-radius: 4px;">Power BI</span>
+              <span style="background: #1e293b; color: #38bdf8; font-size: 0.75rem; padding: 0.2rem 0.6rem; border-radius: 4px;">DAX</span>
+              <span style="background: #1e293b; color: #38bdf8; font-size: 0.75rem; padding: 0.2rem 0.6rem; border-radius: 4px;">Star Schema</span>
+              <span style="background: #1e293b; color: #38bdf8; font-size: 0.75rem; padding: 0.2rem 0.6rem; border-radius: 4px;">RLS</span>
+            </div>
+          </div>
+          <a href="https://dataanalysthub.com.ng" target="_blank" style="color: #38bdf8; text-decoration: none; font-weight: 600; font-size: 0.88rem;">View Case Study →</a>
+        </div>
+
+        <!-- Project 3: Transport Management Metrics -->
+        <div class="project-card" style="background: #0f172a; border: 1px solid #1e293b; padding: 2rem; border-radius: 12px; display: flex; flex-direction: column; justify-content: space-between; cursor: pointer;" onclick="openProjectModal('Transport Operations & HR Dashboard', 'Driver administration and headcount analytics tracking availability, retention metrics, and operational efficiency through custom wireframe layouts.', ['Power BI', 'HR Analytics', 'KPI Cards'])">
+          <div>
+            <div style="background: rgba(129, 140, 248, 0.1); width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; margin-bottom: 1rem; border: 1px solid rgba(129, 140, 248, 0.2);">🚛</div>
+            <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 0.5rem; color: #f8fafc;">Transport Operations & HR Dashboard</h3>
+            <p style="font-size: 0.88rem; color: #94a3b8; line-height: 1.5; margin-bottom: 1.5rem;">Driver administration and headcount analytics tracking availability, retention metrics, and operational efficiency through custom wireframe layouts.</p>
+            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.5rem;">
+              <span style="background: #1e293b; color: #818cf8; font-size: 0.75rem; padding: 0.2rem 0.6rem; border-radius: 4px;">Power BI</span>
+              <span style="background: #1e293b; color: #818cf8; font-size: 0.75rem; padding: 0.2rem 0.6rem; border-radius: 4px;">HR Analytics</span>
+              <span style="background: #1e293b; color: #818cf8; font-size: 0.75rem; padding: 0.2rem 0.6rem; border-radius: 4px;">KPI Cards</span>
+            </div>
+          </div>
+          <a href="https://dataanalysthub.com.ng" target="_blank" style="color: #818cf8; text-decoration: none; font-weight: 600; font-size: 0.88rem;">View Case Study →</a>
+        </div>
+
+        <!-- Project 4: Real-Time Fraud Detection Pipeline -->
+        <div class="project-card" style="background: #0f172a; border: 1px solid #1e293b; padding: 2rem; border-radius: 12px; display: flex; flex-direction: column; justify-content: space-between; cursor: pointer;" onclick="openProjectModal('Automated Fraud Detection Pipeline', 'Three-layer real-time monitoring framework integrating Power Automate HTTP webhooks, Power Service REST APIs, and PowerShell payloads.', ['Power Automate', 'REST APIs', 'PowerShell'])">
+          <div>
+            <div style="background: rgba(52, 211, 153, 0.1); width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; margin-bottom: 1rem; border: 1px solid rgba(52, 211, 153, 0.2);">🛡️</div>
+            <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 0.5rem; color: #f8fafc;">Automated Fraud Detection Pipeline</h3>
+            <p style="font-size: 0.88rem; color: #94a3b8; line-height: 1.5; margin-bottom: 1.5rem;">Three-layer real-time monitoring framework integrating Power Automate HTTP webhooks, Power Service REST APIs, and PowerShell payloads.</p>
+            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.5rem;">
+              <span style="background: #1e293b; color: #34d399; font-size: 0.75rem; padding: 0.2rem 0.6rem; border-radius: 4px;">Power Automate</span>
+              <span style="background: #1e293b; color: #34d399; font-size: 0.75rem; padding: 0.2rem 0.6rem; border-radius: 4px;">REST APIs</span>
+              <span style="background: #1e293b; color: #34d399; font-size: 0.75rem; padding: 0.2rem 0.6rem; border-radius: 4px;">PowerShell</span>
+            </div>
+          </div>
+          <a href="https://dataanalysthub.com.ng" target="_blank" style="color: #34d399; text-decoration: none; font-weight: 600; font-size: 0.88rem;">View Architecture →</a>
+        </div>
+
+      </div>
+    </section>
 
     <!-- Pricing Section with Clear Tier Benefits -->
     <div id="pricing" style="padding: 4rem 5%; max-width: 1100px; margin: 0 auto; text-align: center;">
@@ -272,6 +330,21 @@
         <button type="submit" class="btn-primary full-width" style="margin-bottom: 0.75rem; background: #38bdf8; color: #0b0f19; border: none; padding: 0.75rem; border-radius: 6px; font-weight: 700; cursor: pointer;">Submit Request</button>
         <button type="button" id="closeRequestDemoModalBtn" class="btn-secondary full-width" style="background: #1e293b; color: #f8fafc; border: 1px solid #334155; padding: 0.75rem; border-radius: 6px; cursor: pointer;">Cancel</button>
       </form>
+    </div>
+  </div>
+
+  <!-- Project Interactive Detail Modal Overlay -->
+  <div id="projectModal" class="auth-overlay hidden" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 1000; align-items: center; justify-content: center;">
+    <div class="auth-card" style="max-width: 600px; text-align: left; background: #0f172a; padding: 2.5rem; border-radius: 12px; border: 1px solid #1e293b;">
+      <h2 id="modalProjectTitle" style="color: #f8fafc; margin-bottom: 0.75rem; font-size: 1.5rem;">Project Title</h2>
+      <p id="modalProjectDesc" style="color: #94a3b8; font-size: 0.95rem; line-height: 1.6; margin-bottom: 1.5rem;">Project description...</p>
+      <div style="background: #1e293b; height: 180px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 1.5rem; border: 1px dashed #334155;">
+        <span style="color: #38bdf8; font-weight: 600;">📊 Interactive Dashboard Wireframe Preview Active</span>
+      </div>
+      <div style="display: flex; gap: 1rem;">
+        <a id="modalProjectLink" href="https://dataanalysthub.com.ng" target="_blank" style="flex: 1; background: #38bdf8; color: #0b0f19; text-align: center; text-decoration: none; padding: 0.75rem; border-radius: 6px; font-weight: 700;">Open Live Portal →</a>
+        <button type="button" id="closeProjectModalBtn" style="flex: 1; background: #1e293b; color: #f8fafc; border: 1px solid #334155; padding: 0.75rem; border-radius: 6px; font-weight: 600; cursor: pointer;">Close Preview</button>
+      </div>
     </div>
   </div>
 
