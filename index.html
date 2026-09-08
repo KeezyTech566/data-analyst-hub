@@ -308,21 +308,21 @@
     <!-- Studio Content Area -->
     <div style="flex: 1; padding: 2rem 3%; max-width: 1300px; margin: 0 auto; width: 100%; box-sizing: border-box;">
 
-      <!-- Panel 1: Ingestion & Schema Modeling -->
+      <!-- Panel 1: Multi-Table Enterprise Ingestion & Schema Modeling -->
       <section id="uploadSection" style="background: #0f172a; border: 1px solid #1e293b; padding: 2.5rem; border-radius: 12px; text-align: center; max-width: 900px; margin: 0 auto;">
-        <h2 style="margin-bottom: 0.5rem; font-size: 1.5rem;">Enterprise Ingestion & Schema Modeling</h2>
-        <p style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 2rem;">Upload dataset and configure Star Schema or Snowflake relational hierarchies.</p>
+        <h2 style="margin-bottom: 0.5rem; font-size: 1.5rem;">Multi-Table Ingestion & Schema Modeling</h2>
+        <p style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 2rem;">Select and upload multiple tables (Fact & Dimensions) simultaneously for relational modeling.</p>
         
         <div style="display: flex; flex-direction: column; gap: 1.25rem; align-items: center;">
-          <input type="file" id="csvFileInput" accept=".csv,.xlsx,.xls,.parquet,.json,.tsv,.txt" style="color: #94a3b8;">
+          <input type="file" id="csvFileInput" multiple accept=".csv,.xlsx,.xls,.parquet,.json,.tsv,.txt" style="color: #94a3b8;">
           
           <div style="display: flex; gap: 1rem; width: 100%; justify-content: center;">
             <div style="text-align: left; width: 45%;">
               <label style="font-size: 0.8rem; color: #94a3b8; display: block; margin-bottom: 0.3rem;">Data Modeling Architecture</label>
               <select id="schemaArchitectureSelect" style="width: 100%; background: #1e293b; color: #38bdf8; border: 1px solid #334155; padding: 0.6rem; border-radius: 6px;">
-                <option value="star">Star Schema (Single Fact & Dimensions)</option>
+                <option value="star">Star Schema (Fact + Dimension Tables)</option>
                 <option value="snowflake">Snowflake Schema (Normalized Hierarchies)</option>
-                <option value="flat">Flat Table Grain</option>
+                <option value="flat">Combined Flat Table Grain</option>
               </select>
             </div>
             <div style="text-align: left; width: 45%;">
@@ -335,9 +335,9 @@
             </div>
           </div>
 
-          <button id="uploadBtn" style="background: #38bdf8; color: #0b0f19; border: none; padding: 0.75rem 2rem; border-radius: 6px; font-weight: 700; cursor: pointer; margin-top: 1rem;">Process Model & Profile</button>
+          <button id="uploadBtn" style="background: #38bdf8; color: #0b0f19; border: none; padding: 0.75rem 2rem; border-radius: 6px; font-weight: 700; cursor: pointer; margin-top: 1rem;">Process All Tables & Model</button>
         </div>
-        <span id="loading" class="hidden" style="margin-top: 1rem; display: block; color: #38bdf8; font-weight: 500;">Building schema relations & profiling... please wait.</span>
+        <span id="loading" class="hidden" style="margin-top: 1rem; display: block; color: #38bdf8; font-weight: 500;">Ingesting multiple streams and building relational schema... please wait.</span>
       </section>
 
       <!-- Panel 2: Transformation Studio -->
